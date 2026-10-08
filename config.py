@@ -27,8 +27,8 @@ class Config(object):
     # logging - canonical log path for setup and the /logs command
     LOG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "BotLog.txt")
  
-    # other configs
-    PIC = os.environ.get("PIC", "https://i.ibb.co/YTk9gzhY/IMG-20250906-144306-804.jpg")
+    # other configs (Updated with your new image link)
+    PIC = os.environ.get("PIC", "https://i.postimg.cc/bYG60SRD/1790717064167.png")
     ADMIN = _int_env("ADMIN", 0)
     LOG_CHANNEL = _int_env("LOG_CHANNEL", 0)
     BIN_CHANNEL = _int_env("BIN_CHANNEL", 0)
@@ -110,13 +110,13 @@ class rkn(object):
 
 <b>•></b> /delthumb - 𝖴𝗌𝖾 𝖳𝗁𝗂𝗌 𝖢𝗈𝗆𝗆𝖺𝗇𝖽 𝖳𝗈 𝖣𝖾𝗅𝖾𝗍𝖾 𝖸𝗈𝗎𝗋 𝖮𝗅𝖽 𝖳𝗁𝗎𝗆𝖻𝗇𝖺𝗂𝗅.
 
-<b>•></b> /viewthumb - 𝖴𝗌𝖾 𝖳𝗁𝗂𝗌 𝖢𝗈𝗆𝗆𝖺𝗇𝖽 𝖳𝗈 𝖵𝗂𝖾𝗐 𝖸𝗈𝗎𝗋 𝖢𝗎𝗋𝗋𝖾𝗇𝗍 𝖳𝗁𝗎𝗆𝖻𝗇𝖺𝗂𝗅."""
+<b>•></b> /viewthumb - 𝖴𝗌𝖾 𝖳𝗁𝗂𝗌 𝖢𝗈𝗆𝗆𝖺𝗇𝖽 𝖳𝗈 𝖵𝗂𝖾𝗲 𝖸𝗈𝗎𝗋 𝖢𝗎𝗋𝗋𝖾𝗇𝗍 𝖳𝗁𝗎𝗆𝖻𝗇𝖺𝗂𝗅."""
 
     CAPTION = """📑 <b><u>𝖧𝗈𝗐 𝖳𝗈 𝖲𝖾𝗍 𝖢𝗎𝗌𝗍𝗈𝗆 𝖢𝖺𝗉𝗍𝗂𝗈𝗇</u></b>
 
 <b>•></b> /setcaption - 𝖴𝗌𝖾 𝖳𝗁𝗂𝗌 𝖢𝗈𝗆𝗆𝖺𝗇𝖽 𝖳𝗈 𝖲𝖾𝗍 𝖠 𝖢𝗎𝗌𝗍𝗈𝗆 𝖢𝖺𝗉𝗍𝗂𝗈𝗇.
 
-<b>•></b> /seecaption - 𝖴𝗌𝖾 𝖳𝗁𝗂𝗌 𝖢𝗈𝗆𝗆𝖺𝗇𝖽 𝖳𝗈 𝖵𝗂𝖾𝗐 𝖸𝗈𝗎𝗋 𝖢𝗎𝗌𝗍𝗈𝗆 𝖢𝖺𝗉𝗍𝗂𝗈𝗇.
+<b>•></b> /seecaption - 𝖴𝗌𝖾 𝖳𝗁𝗂𝗌 𝖢𝗈𝗆𝗆𝖺𝗇𝖽 𝖳𝗈 𝖵𝗂𝖾𝗲 𝖸𝗈𝗎𝗋 𝖢𝗎𝗌𝗍𝗈𝗆 𝖢𝖺𝗉𝗍𝗂𝗈𝗇.
 
 <b>•></b> /delcaption - 𝖴𝗌𝖾 𝖳𝗁𝗂𝗌 𝖢𝗈𝗆𝗆𝖺𝗇𝖽 𝖳𝗈 𝖣𝖾𝗅𝖾𝗍𝖾 𝖸𝗈𝗎𝗋 𝖢𝗎𝗌𝗍𝗈𝗆 𝖢𝖺𝗉𝗍𝗂𝗈𝗇.
 
@@ -141,7 +141,7 @@ class rkn(object):
 🧠 𝖱𝖠𝖬: "{}%"
 💽 𝖳𝗈𝗍𝖺𝗅 𝖣𝗂𝗌𝗄: "{}"
 📦 𝖴𝗌𝖾𝖽 𝖲𝗉𝖺𝖼𝖾: "{} {}%"
-💾 𝖥𝗋𝖾𝖾 𝖲𝗉𝖺𝖼𝖾: "{}"
+💾 𝖥𝗋𝖾𝖾 𝖲𝗉𝖺𝗀𝖾: "{}"
 ⬆️ 𝖴𝗉𝗅𝗈𝖺𝖽: "{}"
 ⬇️ 𝖣𝗈𝗐𝗇𝗅𝗈𝖺𝖽: "{}"
 🌐 𝖭𝖾𝗍𝗐𝗈𝗋𝗄: "{}"
@@ -160,13 +160,13 @@ class rkn(object):
     
     CUSTOM_FILE_NAME = """<u>🖋️ 𝖢𝗎𝗌𝗍𝗈𝗆 𝖥𝗂𝗅𝖾 𝖭𝖺𝗆𝖾</u>
 
-𝖸𝗈𝗎 𝖢𝖺𝗇 𝖯𝗋𝖾-𝖠𝖽𝖽 𝖠 𝖯𝗋𝖾𝖿𝗂𝗑 𝖮𝗋 𝖲𝗎𝖿𝖿𝗂𝗑 𝖠𝗅𝗈𝗇𝗀 𝖶𝗂𝗍𝗁 𝖸𝗈𝗎𝗋 𝖭𝖾𝗐 𝖥𝗂𝗅𝖾 𝖭𝖺𝗆𝖾.
+𝖸𝗈𝗎 𝖢𝖺𝗇 𝖯𝗋𝖾-𝖠𝖽𝖽 𝖠 𝖯𝗋𝖾𝖿𝗂𝗑 𝖮𝗋 𝖲𝗎𝖿𝖿𝗂𝗑 𝖠𝗅𝗈𝗇𝗀 𝖶𝗂𝗍𝗁 𝖸𝗈𝗎𝗋 𝖭𝖾𝗲 𝖥𝗂𝗅𝖾 𝖭𝖺𝗆𝖾.
 
 ➢ /setprefix - 𝖴𝗌𝖾 𝖳𝗁𝗂𝗌 𝖢𝗈𝗆𝗆𝖺𝗇𝖽 𝖳𝗈 𝖠𝖽𝖽 𝖠 𝖯𝗋𝖾𝖿𝗂𝗑 𝖳𝗈 𝖸𝗈𝗎𝗋 𝖥𝗂𝗅𝖾𝗇𝖺𝗆𝖾.
-➢ /seeprefix - 𝖴𝗌𝖾 𝖳𝗁𝗂𝗌 𝖢𝗈𝗆𝗆𝖺𝗇𝖽 𝖳𝗈 𝖵𝗂𝖾𝗐 𝖸𝗈𝗎𝗋 𝖯𝗋𝖾𝖿𝗂𝗑.
+➢ /seeprefix - 𝖴𝗌𝖾 𝖳𝗁𝗂𝗌 𝖢𝗈𝗆𝗆𝖺𝗇𝖽 𝖳𝗈 𝖵𝗂𝖾𝗲 𝖸𝗈𝗎𝗋 𝖯𝗋𝖾𝖿𝗂𝗑.
 ➢ /delprefix - 𝖴𝗌𝖾 𝖳𝗁𝗂𝗌 𝖢𝗈𝗆𝗆𝖺𝗇𝖽 𝖳𝗈 𝖣𝖾𝗅𝖾𝗍𝖾 𝖸𝗈𝗎𝗋 𝖯𝗋𝖾𝖿𝗂𝗑.
 ➢ /setsuffix - 𝖴𝗌𝖾 𝖳𝗁𝗂𝗌 𝖢𝗈𝗆𝗆𝖺𝗇𝖽 𝖳𝗈 𝖠𝖽𝖽 𝖠 𝖲𝗎𝖿𝖿𝗂𝗑 𝖳𝗈 𝖸𝗈𝗎𝗋 𝖥𝗂𝗅𝖾𝗇𝖺𝗆𝖾.
-➢ /seesuffix - 𝖴𝗌𝖾 𝖳𝗁𝗂𝗌 𝖢𝗈𝗆𝗆𝖺𝗇𝖽 𝖳𝗈 𝖵𝗂𝖾𝗐 𝖸𝗈𝗎𝗋 𝖲𝗎𝖿𝖿𝗂𝗑.
+➢ /seesuffix - 𝖴𝗌𝖾 𝖳𝗁𝗂𝗌 𝖢𝗈𝗆𝗆𝖺𝗇𝖽 𝖳𝗈 𝖵𝗂𝖾𝗲 𝖸𝗈𝗎𝗋 𝖲𝗎𝖿𝖿𝗂𝗑.
 ➢ /delsuffix - 𝖴𝗌𝖾 𝖳𝗁𝗂𝗌 𝖢𝗈𝗆𝗆𝖺𝗇𝖽 𝖳𝗈 𝖣𝖾𝗅𝖾𝗍𝖾 𝖸𝗈𝗎𝗋 𝖲𝗎𝖿𝖿𝗂𝗑.
 
 𝖤𝗑𝖺𝗆𝗉𝗅𝖾: <code>/setsuffix @TechifyBots</code>
@@ -174,7 +174,7 @@ class rkn(object):
 
     DEV_TXT = """<b><u>𝖲𝗉𝖾𝖼𝗂𝖺𝗅 𝖳𝗁𝖺𝗇𝗄𝗌 & 𝖣𝖾𝗏𝖾𝗅𝗈𝗉𝖾𝗋𝗌</u></b>
 
-» 𝖲𝗈𝗎𝗋𝖼𝖾 𝖢𝗈𝖽𝖾 : <a href=https://github.com/TechifyBots/Rename-Bot>𝖱𝖾𝗇𝖺𝗆𝖾-𝖡𝗈𝗍</a>
+» 𝖲𝗈𝗎𝗋𝖢𝖾 𝖢𝗈𝖽𝖾 : <a href=https://github.com/TechifyBots/Rename-Bot>𝖱𝖾𝗇𝖺𝗆𝖾-𝖡𝗈𝗍</a>
 
 • ❣️ <a href=https://github.com/RknDeveloper>𝖱𝗄𝗇𝖣𝖾𝗏𝖾𝗅𝗈𝗉𝖾𝗋</a>
 • ❣️ <a href=https://github.com/DigitalBotz>𝖣𝗂𝗀𝗂𝗍𝖺𝗅𝖡𝗈𝗍𝗓</a>
@@ -189,3 +189,4 @@ class rkn(object):
 ┣⪼ 🚀 𝗦𝗣𝗘𝗘𝗗: {3}/s
 ┣⪼ ⏰ 𝗘𝗧𝗔: {4}
 ╰━━━━━━━━◉🔥◉━━━━━━━━╯</b>"""
+    
