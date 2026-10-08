@@ -35,7 +35,7 @@ async def log_file(b, m):
     except Exception as e:
         await m.reply(str(e))
 
-@Client.on_message(filters.private & filters.command("addpremium"))
+@Client.on_message(filters.private & filters.command("givepro"))
 async def add_premium(client, message):
     # Security Check: Agar bhejne wala admin nahi hai, toh rok do
     if message.from_user.id not in ADMINS:
@@ -46,7 +46,7 @@ async def add_premium(client, message):
     
     if client.uploadlimit:
         if len(message.command) < 4:
-            return await message.reply_text("Usage : /addpremium user_id Plan_Type (e.g... <code>Pro</code>, <code>UltraPro</code>) time (e.g., '1 day for days', '1 hour for hours', or '1 min for minutes', or '1 month for months' or '1 year for year')")
+            return await message.reply_text("Usage : /givepro user_id Plan_Type (e.g... <code>Pro</code>, <code>UltraPro</code>) time (e.g., '1 day for days', '1 hour for hours', or '1 min for minutes', or '1 month for months' or '1 year for year')")
         
         user_id = int(message.command[1])
         plan_type = message.command[2]
@@ -67,7 +67,7 @@ async def add_premium(client, message):
 
         seconds = await get_seconds(time_string)
         if seconds <= 0:
-            return await message.reply_text("Invalid time format. Please use <code>/addpremium user_id 1 year 1 month 1 day 1 min 10 s</code>")
+            return await message.reply_text("Invalid time format. Please use <code>/givepro user_id 1 year 1 month 1 day 1 min 10 s</code>")
         
         expiry_time = datetime.datetime.now() + datetime.timedelta(seconds=seconds)
         user_data = {"id": user_id, "expiry_time": expiry_time}
@@ -88,7 +88,7 @@ async def add_premium(client, message):
         )
     else:
         if len(message.command) < 3:
-            return await message.reply_text("Usage : /addpremium user_id time (e.g., '1 day for days', '1 hour for hours', or '1 min for minutes', or '1 month for months' or '1 year for year')")
+            return await message.reply_text("Usage : /givepro user_id time (e.g., '1 day for days', '1 hour for hours', or '1 min for minutes', or '1 month for months' or '1 year for year')")
         user_id = int(message.command[1])
         time_string = " ".join(message.command[2:])
         time_zone = datetime.datetime.now(ZoneInfo("Asia/Kolkata"))
@@ -96,7 +96,7 @@ async def add_premium(client, message):
         user = await client.get_users(user_id)        
         seconds = await get_seconds(time_string)
         if seconds <= 0:
-            return await message.reply_text("Invalid time format. Please use <code>/addpremium user_id 1 year 1 month 1 day 1 min 10 s</code>")
+            return await message.reply_text("Invalid time format. Please use <code>/givepro user_id 1 year 1 month 1 day 1 min 10 s</code>")
         expiry_time = datetime.datetime.now() + datetime.timedelta(seconds=seconds)
         user_data = {"id": user_id, "expiry_time": expiry_time}
         await digital_botz.add_premium(user_id, user_data)
@@ -159,7 +159,7 @@ async def restart_bot(b, m):
         except FloodWait as e:
             await asyncio.sleep(e.value)
     completed_restart = datetime.timedelta(seconds=int(time.time() - start_time))
-    await rkn.edit(f"ᴄᴏᴍᴘʟᴇᴛᴇᴅ ʀᴇsᴛᴀʀᴛ: {completed_restart}\n\n• ᴛᴏᴛᴀʟ ᴜsᴇʀs: {total_users}\n• sᴜᴄᴄᴇssғᴜʟ: {success}\n• ʙʟᴏᴄᴋᴇᴅ ᴜsᴇʀs: {blocked}\n• ᴅᴇʟᴇᴛᴇᴅ ᴀᴄᴄᴏᴜɴᴛs: {deactivated}\n• ᴜɴsᴜᴄᴄᴇssғᴜʟ: {failed}")
+    await rkn.edit(f"ᴄᴏᴍᴘʟᴇᴛᴇᴅ ʀᴇsᴛᴀʀᴛ: {completed_restart}\n\n• ᴛᴏᴛᴀʟ ᴜsᴇʀs: {total_users}\n• sᴜᴄᴄᴇssғᴜʟ: {success}\n• ʙʟᴏᴄᴋᴇᴅ ᴜsᴇʀs: {blocked}\n• ᴅᴇʟᴇᴛᴇᴅ ᴀᴄᴄᴏᴜɴᴛs: {deactivated}\n• ᴜɴสᴄᴄᴇssғᴜʟ: {failed}")
     os.execl(sys.executable, sys.executable, *sys.argv)
 
 @Client.on_message(filters.private & filters.command("ban") & filters.user(ADMINS))
@@ -204,3 +204,4 @@ async def broadcast_handler(bot: Client, m: Message):
         if not done % 20:
             await sts_msg.edit(f"Progress: {done}/{total_users}\nSuccess: {success}\nFailed: {failed}")
     await sts_msg.edit(f"Broadcast Completed!\nSuccess: {success}\nFailed: {failed}")
+                   
