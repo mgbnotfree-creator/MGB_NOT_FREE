@@ -2,7 +2,7 @@ from pyrogram import Client, filters
 from pyrogram.enums import ButtonStyle, MessageMediaType, ParseMode
 from pyrogram.errors import FloodWait
 from pyrogram.file_id import FileId
-from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup, ForceReply, ReplyParameters
+from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from PIL import Image
 from helper.utils import progress_for_pyrogram, convert, humanbytes, add_prefix_suffix, remove_path
 from helper.database import digital_botz
@@ -23,22 +23,7 @@ app = Client("4gb_FileRenameBot", api_id=Config.API_ID, api_hash=Config.API_HASH
 async def rename_start(client, message):
     user_id  = message.from_user.id
     rkn_file = getattr(message, message.media.value)
-    filename = rkn_file.file_name
-    filesize = humanbytes(rkn_file.file_size)
-    mime_type = rkn_file.mime_type
-    dcid = FileId.decode(rkn_file.file_id).dc_id
-    extension_type = mime_type.split('/')[0]
-
-    # --- 1. AGAR AUDIO FILE HAI, TO WAHI PURANA NAAM SAME RAKHEIN (No prompt, Direct action) ---
-    if message.media == MessageMediaType.AUDIO:
-        new_name = filename or "audio.mp3"
-        button = [[InlineKeyboardButton("🎵 Aᴜᴅɪᴏ", callback_data="upload#audio", style=ButtonStyle.PRIMARY)]]
-        
-        return await message.reply_text(
-            text=f"<b>Aᴜᴅɪᴏ Fɪʟᴇ Dᴇᴛᴇᴄᴛᴇᴅ!</b>\n<b>• Fɪʟᴇ Nᴀᴍᴇ :-</b><code>{escape(str(new_name))}</code>\n\n<b>Sᴇʟᴇᴄᴛ Tʜᴇ Oᴜᴛᴩᴜᴛ Tyᴩᴇ 👇</b>",
-            quote=True,
-            reply_markup=InlineKeyboardMarkup(button)
-        )
+    filename = getattr(rkn_file, "file_name", "file.mkv")
 
     # --- DAILY FILE COUNT LIMIT CHECK ---
     user_data = await digital_botz.get_user_data(user_id)
@@ -57,96 +42,22 @@ async def rename_start(client, message):
                 reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🪪 Uᴘɢʀᴀᴅᴇ Pʟᴀɴꜱ", callback_data="plans", style=ButtonStyle.SUCCESS)]])
             )
 
-    # --- 2. FULLY AUTOMATIC RENAME LOGIC (Video & Documents ke liye) ---
-    auto_name = user_data.get('auto_name', None) if user_data else None
+    # --- FULLY AUTOMATIC DEFAULT NAME FLOW (No Command / No Manual Typing Needed) ---
+    new_name = filename or "file.mkv"
+    new_name = new_name.replace("\\", "/").split("/")[-1]
     
-    if auto_name:
-        current_num = user_data.get('auto_number', 1401)
-        new_name = auto_name.replace("{episode}", str(current_num))
-        
-        await digital_botz.col.update_one({'_id': user_id}, {'$inc': {'auto_number': 1}})
-        
-        if not "." in new_name:
-            extn = (filename or "").rsplit(".", 1)[-1] or "mkv"
-            new_name = new_name + "." + extn
-        new_name = new_name.replace("\\", "/").split("/")[-1]
-        
-        button = [[InlineKeyboardButton("📁 Dᴏᴄᴜᴍᴇɴᴛ", callback_data = "upload#document", style=ButtonStyle.PRIMARY)]]
-        if message.media in [MessageMediaType.VIDEO, MessageMediaType.DOCUMENT]:
-            button.append([InlineKeyboardButton("🎥 Vɪᴅᴇᴏ", callback_data = "upload#video", style=ButtonStyle.PRIMARY)])
-        elif message.media == MessageMediaType.AUDIO:
-            button.append([InlineKeyboardButton("🎵 Aᴜᴅɪᴏ", callback_data = "upload#audio", style=ButtonStyle.PRIMARY)])
-                
-        await message.reply_text(
-            text=f"<b>Aᴜᴛᴏ-Rᴇɴᴀᴍᴇᴅ Fɪʟᴇ Nᴀᴍᴇ :-</b><code>{escape(str(new_name))}</code>\n\n<b>Sᴇʟᴇᴄᴛ Tʜᴇ Oᴜᴛᴩᴜᴛ Fɪʟᴇ Tyᴩᴇ 👇</b>",
-            quote=True,
-            reply_markup=InlineKeyboardMarkup(button)
-        )
-        return
-
-    # --- 3. MANUAL RENAME FLOW (Agar Auto-Name set nahi hai aur Video/Doc hai) ---
-    media_info_text = (
-        f"<b><i>ᴍᴇᴅɪᴀ ɪɴꜰᴏ:</i></b>\n\n"
-        f"◈ ᴏʟᴅ ꜰɪʟᴇ ɴᴀᴍᴇ: <code>{escape(str(filename))}</code>\n\n"
-        f"◈ ᴇxᴛᴇɴꜱɪᴏɴ: <code>{escape(extension_type.upper())}</code>\n"
-        f"◈ ꜰɪʟᴇ ꜱɪᴢᴇ: <code>{filesize}</code>\n"
-        f"◈ ᴍɪᴍᴇ ᴛʏᴩ: <code>{escape(str(mime_type))}</code>\n"
-        f"◈ ᴅᴄ ɪᴅ: <code>{dcid}</code>\n\n"
-        "ᴘʟᴇᴀsᴇ ᴇɴᴛᴇʀ ᴛʜᴇ ɴᴇᴡ ғɪʟᴇɴᴀᴍᴇ ᴡɪᴛ🇭 ᴇxᴛᴇɴsɪᴏɴ ᴀɴᴅ ʀᴇᴘʟʏ ᴛʜɪs ᴍᴇssᴀɢᴇ...."
+    button = [[InlineKeyboardButton("📁 Dᴏᴄᴜᴍᴇɴᴛ", callback_data = "upload#document", style=ButtonStyle.PRIMARY)]]
+    if message.media == MessageMediaType.VIDEO:
+        button.append([InlineKeyboardButton("🎥 Vɪᴅᴇᴏ", callback_data = "upload#video", style=ButtonStyle.PRIMARY)])
+    elif message.media == MessageMediaType.AUDIO:
+        button.append([InlineKeyboardButton("🎵 Aᴜᴅɪᴏ", callback_data = "upload#audio", style=ButtonStyle.PRIMARY)])
+    elif message.media == MessageMediaType.DOCUMENT:
+        button.append([InlineKeyboardButton("🎥 Vɪᴅᴇᴏ", callback_data = "upload#video", style=ButtonStyle.PRIMARY)])
+            
+    await message.reply_text(
+        text=f"<b>Fɪʟᴇ Dᴇᴛᴇᴄᴛᴇᴅ!</b>\n<b>• Dᴇꜰᴀᴜʟᴛ Nᴀᴍᴇ :-</b><code>{escape(str(new_name))}</code>\n\n<b>Sᴇʟᴇᴄᴛ Tʜᴇ Oᴜᴛᴩᴜᴛ Tyᴩᴇ 👇</b>",
+        reply_markup=InlineKeyboardMarkup(button)
     )
-    
-    if await digital_botz.has_premium_access(user_id) and client.premium:
-        if not Config.STRING_SESSION and rkn_file.file_size > 2000 * 1024 * 1024:
-            return await message.reply_text("Sᴏʀʀy Bʀᴏ Tʜɪꜱ Bᴏᴛ Iꜱ Dᴏᴇꜱɴ'ᴛ Sᴜᴩᴩᴏʀᴛ Uᴩʟᴏᴀᴅɪɴɢ Fɪʟᴇꜱ Bɪɢɢᴇʀ Tʜᴀɴ 2Gʙ+")
-        try:
-            await message.reply_text(text=media_info_text, reply_markup=ForceReply(True))
-        except FloodWait as e:
-            await asyncio.sleep(e.value)
-            await message.reply_text(text=media_info_text, reply_markup=ForceReply(True))
-    else:
-        if rkn_file.file_size > 2000 * 1024 * 1024 and client.premium:
-            return await message.reply_text("If you want to rename 4GB+ files then you will have to buy premium. /plans")
-        try:
-            await message.reply_text(text=media_info_text, reply_markup=ForceReply(True))
-        except FloodWait as e:
-            await asyncio.sleep(e.value)
-            await message.reply_text(text=media_info_text, reply_markup=ForceReply(True))
-
-@Client.on_message(filters.private & filters.reply)
-async def refunc(client, message):
-    reply_message = message.reply_to_message
-    if (reply_message.reply_markup) and isinstance(reply_message.reply_markup, ForceReply):
-        if rkn.SEND_METADATA.splitlines()[0] in (reply_message.text or ""):
-            return  
-            
-        new_name = message.text 
-        await message.delete() 
-        msg = await client.get_messages(message.chat.id, reply_message.id)
-        
-        if not msg or not msg.reply_to_message or not msg.reply_to_message.media:
-            return await message.reply_text("⚠️ Original file not found or message expired. Please send the file again.")
-            
-        file = msg.reply_to_message
-        media = getattr(file, file.media.value)
-        
-        if not "." in new_name:
-            extn = (media.file_name or "").rsplit(".", 1)[-1] or "mkv"
-            new_name = new_name + "." + extn
-        new_name = new_name.replace("\\", "/").split("/")[-1]
-        await reply_message.delete()
-        
-        button = [[InlineKeyboardButton("📁 Dᴏᴄᴜᴍᴇɴᴛ", callback_data = "upload#document", style=ButtonStyle.PRIMARY)]]
-        if file.media in [MessageMediaType.VIDEO, MessageMediaType.DOCUMENT]:
-            button.append([InlineKeyboardButton("🎥 Vɪᴅᴇᴏ", callback_data = "upload#video", style=ButtonStyle.PRIMARY)])
-        elif file.media == MessageMediaType.AUDIO:
-            button.append([InlineKeyboardButton("🎵 Aᴜᴅɪᴏ", callback_data = "upload#audio", style=ButtonStyle.PRIMARY)])
-            
-        await client.send_message(
-            chat_id=message.chat.id,
-            text=f"<b>Sᴇʟᴇᴄᴛ Tʜᴇ Oᴜᴛᴩᴜᴛ Fɪʟᴇ Tyᴩᴇ</b>\n<b>• Fɪʟᴇ Nᴀᴍᴇ :-</b><code>{escape(str(new_name))}</code>",
-            reply_parameters=ReplyParameters(message_id=file.id),
-            reply_markup=InlineKeyboardMarkup(button)
-        )
 
 async def upload_files(bot, sender_id, upload_type, file_path, ph_path, caption, duration, rkn_processing):
     try:
@@ -173,12 +84,14 @@ async def upload_doc(bot, update):
     user_id = int(update.message.chat.id) 
     
     text_content = update.message.text
-    if "Fɪʟᴇ Nᴀᴍᴇ :-" in text_content:
+    if "Dᴇꜰᴀᴜʟᴛ Nᴀᴍᴇ :-" in text_content:
+        new_filename_ = text_content.split("Dᴇꜰᴀᴜʟᴛ Nᴀᴍᴇ :-")[1].split("\n")[0].strip()
+    elif "Fɪʟᴇ Nᴀᴍᴇ :-" in text_content:
         new_filename_ = text_content.split("Fɪʟᴇ Nᴀᴍᴇ :-")[1].split("\n")[0].strip()
     elif ":-" in text_content:
         new_filename_ = text_content.split(":-")[1].split("\n")[0].strip()
     else:
-        new_filename_ = "audio.mp3"
+        new_filename_ = "file.mkv"
 
     user_data = await digital_botz.get_user_data(user_id)
     try:
@@ -285,4 +198,4 @@ async def upload_doc(bot, update):
                 
     await remove_path(ph_path, file_path, dl_path, metadata_path)
     return await rkn_processing.edit("Uploaded Successfully....")
-            
+    
