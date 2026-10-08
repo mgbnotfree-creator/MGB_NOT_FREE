@@ -50,6 +50,9 @@ class Database:
             metadata_code="--change-title @TechifyBots\n--change-video-title @TechifyBots\n--change-audio-title @TechifyBots\n--change-subtitle-title @TechifyBots\n--change-author @TechifyBots",
             expiry_time=None,
             has_free_trial=False,
+            # --- ऑटो-रीनेम की नई फील्ड्स ---
+            auto_name=None,
+            is_autorename=False,
             ban_status=dict(
                 is_banned=False,
                 ban_duration=0,
@@ -122,6 +125,21 @@ class Database:
         user = await self.col.find_one({'_id': int(id)})
         return user.get('metadata_code', None)
 
+    # --- ऑटो-रीनेम के नए डेटाबेस फंक्शन्स ---
+    async def set_auto_name(self, id, auto_name):
+        await self.col.update_one({'_id': int(id)}, {'$set': {'auto_name': auto_name}})
+
+    async def get_auto_name(self, id):
+        user = await self.col.find_one({'_id': int(id)})
+        return user.get('auto_name', None) if user else None
+
+    async def toggle_autorename(self, id, status: bool):
+        await self.col.update_one({'_id': int(id)}, {'$set': {'is_autorename': status}})
+
+    async def get_autorename_status(self, id):
+        user = await self.col.find_one({'_id': int(id)})
+        return user.get('is_autorename', False) if user else False
+
     async def set_used_limit(self, id, used):
         await self.col.update_one({'_id': int(id)}, {'$set': {'used_limit': used}})
       
@@ -172,7 +190,7 @@ class Database:
         if Config.UPLOAD_LIMIT_MODE and limit and type:
             await self.col.update_one(
                 {'_id': user_id}, 
-                {'$set': {
+                {'_set': {
                     'usertype': type,
                     'uploadlimit': limit
                 }}
@@ -190,7 +208,7 @@ class Database:
         if Config.UPLOAD_LIMIT_MODE and limit and type:
             await self.col.update_one(
                 {'_id': user_id}, 
-                {'$set': {
+                {'_set': {
                     'usertype': type,
                     'uploadlimit': limit
                 }}
@@ -275,3 +293,4 @@ class Database:
         return banned_users
         
 digital_botz = Database(Config.DB_URL, Config.DB_NAME)
+    
