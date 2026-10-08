@@ -29,42 +29,12 @@ async def rename_start(client, message):
     dcid = FileId.decode(rkn_file.file_id).dc_id
     extension_type = mime_type.split('/')[0]
 
-    # --- AUTO NUMBERING / EPISODE LOGIC ---
-    user_data = await digital_botz.get_user_data(user_id)
-    auto_name = user_data.get('auto_name', None) if user_data else None
-    
-    if auto_name:
-        # Agar user ka auto-rename active hai, toh number automatically increment karein
-        current_num = user_data.get('auto_number', 1401)
-        suggested_name = auto_name.replace("{episode}", str(current_num))
-        
-        # Extension check
-        if not "." in suggested_name:
-            extn = (filename or "").rsplit(".", 1)[-1] or "mkv"
-            suggested_name = suggested_name + "." + extn
-            
-        media_info_text = (
-            f"<b><i>ᴀᴜᴛᴏ ʀᴇɴᴀᴍᴇ ᴍᴏᴅᴇ ᴀᴄᴛɪᴠᴇ:</i></b>\n\n"
-            f"◈ ᴏʟᴅ ꜰɪʟᴇ ɴᴀᴍᴇ: <code>{escape(str(filename))}</code>\n"
-            f"◈ ɴᴇᴡ sᴜɢɢᴇsᴛᴇᴅ ɴᴀᴍᴇ: <code>{escape(str(suggested_name))}</code>\n\n"
-            "ᴘʟᴇᴀsᴇ ʀᴇᴘʟʏ <b>'yes'</b> ᴏʀ sᴇɴᴅ ᴀ ɴᴇᴡ ɴᴀᴍᴇ ɪꜰ ʏᴏᴜ ᴡᴀɴᴛ ᴛᴏ ᴄʜᴀɴɢᴇ ɪᴛ..."
-        )
-    else:
-        media_info_text = (
-            f"<b><i>ᴍᴇᴅɪᴀ ɪɴꜰᴏ:</i></b>\n\n"
-            f"◈ ᴏʟᴅ ꜰɪʟᴇ ɴᴀᴍᴇ: <code>{escape(str(filename))}</code>\n\n"
-            f"◈ ᴇxᴛᴇɴꜱɪᴏɴ: <code>{escape(extension_type.upper())}</code>\n"
-            f"◈ ꜰɪʟᴇ ꜱɪᴢᴇ: <code>{filesize}</code>\n"
-            f"◈ ᴍɪᴍᴇ ᴛʏᴩ: <code>{escape(str(mime_type))}</code>\n"
-            f"◈ ᴅᴄ ɪᴅ: <code>{dcid}</code>\n\n"
-            "ᴘʟᴇᴀsᴇ ᴇɴᴛᴇʀ ᴛʜᴇ ɴᴇᴡ ғɪʟᴇɴᴀᴍᴇ ᴡɪᴛʜ ᴇxᴛᴇɴsɪᴏɴ ᴀɴᴅ ʀᴇᴘʟʏ ᴛʜɪs ᴍᴇssᴀɢᴇ...."
-        )
-
     # --- DAILY FILE COUNT LIMIT CHECK ---
+    user_data = await digital_botz.get_user_data(user_id)
     if client.premium and client.uploadlimit:
         is_premium = await digital_botz.has_premium_access(user_id)
         max_limit = 50 if is_premium else 5
-        used_count = user_data.get('used_limit', 0)
+        used_count = user_data.get('used_limit', 0) if user_data else 0
         
         if used_count >= max_limit:
             limit_type = "Paid (50 Files/Day)" if is_premium else "Normal (5 Files/Day)"
@@ -75,18 +45,59 @@ async def rename_start(client, message):
                 f"Pʟᴇᴀsᴇ ᴛʀʏ ᴀɢᴀɪɴ ᴛᴏᴍᴏʀʀᴏᴡ ᴏʀ ᴜᴘɢʀᴀᴅᴇ ʏᴏᴜʀ ᴘʟᴀɴ.",
                 reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🪪 Uᴘɢʀᴀᴅᴇ Pʟᴀɴꜱ", callback_data="plans", style=ButtonStyle.SUCCESS)]])
             )
-         
+
+    # --- FULLY AUTOMATIC RENAME LOGIC ---
+    auto_name = user_data.get('auto_name', None) if user_data else None
+    
+    if auto_name:
+        # Auto-rename active hai: Bina pheeche ruke direct sequence number ke sath naam taiyar karein
+        current_num = user_data.get('auto_number', 1401)
+        new_name = auto_name.replace("{episode}", str(current_num))
+        
+        # Agla episode number database mein turant +1 update karein
+        await digital_botz.col.update_one({'_id': user_id}, {'$inc': {'auto_number': 1}})
+        
+        if not "." in new_name:
+            extn = (filename or "").rsplit(".", 1)[-1] or "mkv"
+            new_name = new_name + "." + extn
+        new_name = new_name.replace("\\", "/").split("/")[-1]
+        
+        # Direct Document/Video buttons ke sath bhej dein (No manual reply needed)
+        button = [[InlineKeyboardButton("📁 Dᴏᴄᴜᴍᴇɴᴛ", callback_data = "upload#document", style=ButtonStyle.PRIMARY)]]
+        if rkn_file in [MessageMediaType.VIDEO, MessageMediaType.DOCUMENT] if hasattr(rkn_file, 'media') else True:
+            # Media type ke hisab se button add karein
+            if message.media in [MessageMediaType.VIDEO, MessageMediaType.DOCUMENT]:
+                button.append([InlineKeyboardButton("🎥 Vɪᴅᴇᴏ", callback_data = "upload#video", style=ButtonStyle.PRIMARY)])
+            elif message.media == MessageMediaType.AUDIO:
+                button.append([InlineKeyboardButton("🎵 Aᴜᴅɪᴏ", callback_data = "upload#audio", style=ButtonStyle.PRIMARY)])
+                
+        # Hum message ko store karke seedha select type dikha denge ya direct process kar sakte hain
+        # Yahan hum existing upload callback flow maintain kar rahe hain:
+        sent_msg = await message.reply_text(
+            text=f"<b>Aᴜᴛᴏ-Rᴇɴᴀᴍᴇᴅ Fɪʟᴇ Nᴀᴍᴇ :-</b><code>{escape(str(new_name))}</code>\n\n<b>Sᴇʟᴇᴄᴛ Tʜᴇ Oᴜᴛᴩᴜᴛ Fɪʟᴇ Tyᴩᴇ 👇</b>",
+            reply_markup=InlineKeyboardMarkup(button)
+        )
+        return
+
+    # --- NORMAL MANUAL RENAME FLOW (Agar Auto-Rename on nahi hai) ---
+    media_info_text = (
+        f"<b><i>ᴍᴇᴅɪᴀ ɪɴꜰᴏ:</i></b>\n\n"
+        f"◈ ᴏʟᴅ ꜰɪʟᴇ ɴᴀᴍᴇ: <code>{escape(str(filename))}</code>\n\n"
+        f"◈ ᴇxᴛᴇɴꜱɪᴏɴ: <code>{escape(extension_type.upper())}</code>\n"
+        f"◈ ꜰɪʟᴇ ꜱɪᴢᴇ: <code>{filesize}</code>\n"
+        f"◈ ᴍɪᴍᴇ ᴛʏᴩ: <code>{escape(str(mime_type))}</code>\n"
+        f"◈ ᴅᴄ ɪᴅ: <code>{dcid}</code>\n\n"
+        "ᴘʟᴇᴀsᴇ ᴇɴᴛᴇʀ ᴛʜᴇ ɴᴇᴡ ғɪʟᴇɴᴀᴍᴇ ᴡɪᴛʜ ᴇxᴛᴇɴsɪᴏɴ ᴀɴᴅ ʀᴇᴘʟʏ ᴛʜɪs ᴍᴇssᴀɢᴇ...."
+    )
+    
     if await digital_botz.has_premium_access(user_id) and client.premium:
-        if not Config.STRING_SESSION:
-            if rkn_file.file_size > 2000 * 1024 * 1024:
-                 return await message.reply_text("Sᴏʀʀy Bʀᴏ Tʜɪꜱ Bᴏᴛ Iꜱ Dᴏᴇꜱɴ'ᴛ Sᴜᴩᴩᴏʀᴛ Uᴩʟᴏᴀᴅɪɴɢ Fɪʟᴇꜱ Bɪɢɢᴇʀ Tʜᴀɴ 2Gʙ+")
+        if not Config.STRING_SESSION and rkn_file.file_size > 2000 * 1024 * 1024:
+            return await message.reply_text("Sᴏʀʀy Bʀᴏ Tʜɪꜱ Bᴏᴛ Iꜱ Dᴏᴇꜱɴ'ᴛ Sᴜᴩᴩᴏʀᴛ Uᴩʟᴏᴀᴅɪɴɢ Fɪʟᴇꜱ Bɪɢɢᴇʀ Tʜᴀɴ 2Gʙ+")
         try:
             await message.reply_text(text=media_info_text, reply_markup=ForceReply(True))
         except FloodWait as e:
             await asyncio.sleep(e.value)
             await message.reply_text(text=media_info_text, reply_markup=ForceReply(True))
-        except Exception as e:
-            logger.exception("Error in rename_start: %s", e)
     else:
         if rkn_file.file_size > 2000 * 1024 * 1024 and client.premium:
             return await message.reply_text("If you want to rename 4GB+ files then you will have to buy premium. /plans")
@@ -95,8 +106,6 @@ async def rename_start(client, message):
         except FloodWait as e:
             await asyncio.sleep(e.value)
             await message.reply_text(text=media_info_text, reply_markup=ForceReply(True))
-        except Exception as e:
-            logger.exception("Error in rename_start (non-premium): %s", e)
 
 @Client.on_message(filters.private & filters.reply)
 async def refunc(client, message):
@@ -105,23 +114,16 @@ async def refunc(client, message):
         if rkn.SEND_METADATA.splitlines()[0] in (reply_message.text or ""):
             return  
             
-        user_id = message.from_user.id
-        user_data = await digital_botz.get_user_data(user_id)
-        auto_name = user_data.get('auto_name', None) if user_data else None
-        
-        # Agar auto_name set hai aur user ne 'yes' ya kuch aisi command di hai toh auto sequence use karein
-        if auto_name and message.text.lower() == "yes":
-            current_num = user_data.get('auto_number', 1401)
-            new_name = auto_name.replace("{episode}", str(current_num))
-            # Agla number database mein update karein (+1)
-            await digital_botz.col.update_one({'_id': user_id}, {'$inc': {'auto_number': 1}})
-        else:
-            new_name = message.text 
-            
+        new_name = message.text 
         await message.delete() 
         msg = await client.get_messages(message.chat.id, reply_message.id)
+        
+        if not msg or not msg.reply_to_message or not msg.reply_to_message.media:
+            return await message.reply_text("⚠️ Original file not found or message expired. Please send the file again.")
+            
         file = msg.reply_to_message
         media = getattr(file, file.media.value)
+        
         if not "." in new_name:
             extn = (media.file_name or "").rsplit(".", 1)[-1] or "mkv"
             new_name = new_name + "." + extn
@@ -164,8 +166,16 @@ async def upload_doc(bot, update):
     if not os.path.isdir("Metadata"):
         os.mkdir("Metadata")
     user_id = int(update.message.chat.id) 
-    new_name = update.message.text
-    new_filename_ = new_name.split(":-")[1]
+    
+    # Text se file name extract karna (Chahe manual ho ya auto-rename)
+    text_content = update.message.text
+    if "Fɪʟᴇ Nᴀᴍᴇ :-" in text_content:
+        new_filename_ = text_content.split("Fɪʟᴇ Nᴀᴍᴇ :-")[1].split("\n")[0].strip()
+    elif ":-" in text_content:
+        new_filename_ = text_content.split(":-")[1].split("\n")[0].strip()
+    else:
+        new_filename_ = "video.mkv"
+
     user_data = await digital_botz.get_user_data(user_id)
     try:
         prefix = user_data.get('prefix', None)
@@ -175,6 +185,9 @@ async def upload_doc(bot, update):
         return await rkn_processing.edit(f"⚠️ Error in Prefix/Suffix: {escape(str(e))}")
     
     file = update.message.reply_to_message
+    if not file or not file.media:
+        return await rkn_processing.edit("⚠️ Original file missing.")
+        
     media = getattr(file, file.media.value)
     file_path = f"Renames/{new_filename}"
     metadata_path = f"Metadata/{new_filename}"
@@ -193,7 +206,6 @@ async def upload_doc(bot, update):
             await digital_botz.set_used_limit(user_id, used_remove)
         return await rkn_processing.edit(f"Download Error: {escape(str(e))}")
 
-    # --- AUTO ARTIST & METADATA ---
     metadata_mode = True  
     metadata = await digital_botz.get_metadata_code(user_id)
     if metadata:
@@ -269,4 +281,4 @@ async def upload_doc(bot, update):
                 
     await remove_path(ph_path, file_path, dl_path, metadata_path)
     return await rkn_processing.edit("Uploaded Successfully....")
-            
+        
