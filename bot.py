@@ -140,9 +140,9 @@ def main():
         started = []
         try:
             if Config.STRING_SESSION:
-                await set_identity(app)
+                await app.start()          # ✅ Pehle client start hoga
+                await set_identity(app)    # ✅ Uske baad identity fetch hogi
                 started.append(app)
-                await app.start()
             started.append(tb)
             await tb.start()
             await stop_event.wait()
@@ -171,3 +171,4 @@ if __name__ == "__main__":
         asyncio.run(asyncio.sleep(ft.value))
         logger.info("Now Ready For Deploying!")
         main()
+        
