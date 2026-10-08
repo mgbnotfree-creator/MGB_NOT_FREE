@@ -29,6 +29,17 @@ async def rename_start(client, message):
     dcid = FileId.decode(rkn_file.file_id).dc_id
     extension_type = mime_type.split('/')[0]
 
+    # --- 1. AGAR AUDIO FILE HAI, TO WAHI PURANA NAAM SAME RAKHEIN (No prompt, Direct action) ---
+    if message.media == MessageMediaType.AUDIO:
+        new_name = filename or "audio.mp3"
+        button = [[InlineKeyboardButton("🎵 Aᴜᴅɪᴏ", callback_data="upload#audio", style=ButtonStyle.PRIMARY)]]
+        
+        return await message.reply_text(
+            text=f"<b>Aᴜᴅɪᴏ Fɪʟᴇ Dᴇᴛᴇᴄᴛᴇᴅ!</b>\n<b>• Fɪʟᴇ Nᴀᴍᴇ :-</b><code>{escape(str(new_name))}</code>\n\n<b>Sᴇʟᴇᴄᴛ Tʜᴇ Oᴜᴛᴩᴜᴛ Tyᴩᴇ 👇</b>",
+            reply_parameters=ReplyParameters(message_id=message.id),
+            reply_markup=InlineKeyboardMarkup(button)
+        )
+
     # --- DAILY FILE COUNT LIMIT CHECK ---
     user_data = await digital_botz.get_user_data(user_id)
     if client.premium and client.uploadlimit:
@@ -46,14 +57,13 @@ async def rename_start(client, message):
                 reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🪪 Uᴘɢʀᴀᴅᴇ Pʟᴀɴꜱ", callback_data="plans", style=ButtonStyle.SUCCESS)]])
             )
 
-    # --- FULLY AUTOMATIC RENAME LOGIC (Audio, Video, Document sabhi ke liye) ---
+    # --- 2. FULLY AUTOMATIC RENAME LOGIC (Video & Documents ke liye) ---
     auto_name = user_data.get('auto_name', None) if user_data else None
     
     if auto_name:
         current_num = user_data.get('auto_number', 1401)
         new_name = auto_name.replace("{episode}", str(current_num))
         
-        # Database mein number ko +1 increment karein
         await digital_botz.col.update_one({'_id': user_id}, {'$inc': {'auto_number': 1}})
         
         if not "." in new_name:
@@ -69,11 +79,12 @@ async def rename_start(client, message):
                 
         await message.reply_text(
             text=f"<b>Aᴜᴛᴏ-Rᴇɴᴀᴍᴇᴅ Fɪʟᴇ Nᴀᴍᴇ :-</b><code>{escape(str(new_name))}</code>\n\n<b>Sᴇʟᴇᴄᴛ Tʜᴇ Oᴜᴛᴩᴜᴛ Fɪʟᴇ Tyᴩᴇ 👇</b>",
+            reply_parameters=ReplyParameters(message_id=message.id),
             reply_markup=InlineKeyboardMarkup(button)
         )
         return
 
-    # --- MANUAL RENAME FLOW (Agar Auto-Name set nahi hai) ---
+    # --- 3. MANUAL RENAME FLOW (Agar Auto-Name set nahi hai aur Video/Doc hai) ---
     media_info_text = (
         f"<b><i>ᴍᴇᴅɪᴀ ɪɴꜰᴏ:</i></b>\n\n"
         f"◈ ᴏʟᴅ ꜰɪʟᴇ ɴᴀᴍᴇ: <code>{escape(str(filename))}</code>\n\n"
@@ -81,7 +92,7 @@ async def rename_start(client, message):
         f"◈ ꜰɪʟᴇ ꜱɪᴢᴇ: <code>{filesize}</code>\n"
         f"◈ ᴍɪᴍᴇ ᴛʏᴩ: <code>{escape(str(mime_type))}</code>\n"
         f"◈ ᴅᴄ ɪᴅ: <code>{dcid}</code>\n\n"
-        "ᴘʟᴇᴀsᴇ ᴇɴᴛᴇʀ ᴛʜᴇ ɴᴇᴡ ғɪʟᴇɴᴀᴍᴇ ᴡɪᴛ🇭 ᴇxᴛᴇɴsɪᴏɴ ᴀɴᴅ ʀᴇᴘʟʏ ᴛʜɪs ᴍᴇssᴀɢᴇ...."
+        "ᴘʟᴇᴀsᴇ ᴇɴᴛᴇʀ ᴛʜᴇ ɴᴇᴡ ғɪʟᴇɴᴀᴍᴇ ᴡɪᴛʜ ᴇxᴛᴇɴsɪᴏɴ ᴀɴᴅ ʀᴇᴘʟʏ ᴛʜɪs ᴍᴇssᴀɢᴇ...."
     )
     
     if await digital_botz.has_premium_access(user_id) and client.premium:
@@ -167,7 +178,7 @@ async def upload_doc(bot, update):
     elif ":-" in text_content:
         new_filename_ = text_content.split(":-")[1].split("\n")[0].strip()
     else:
-        new_filename_ = "video.mkv"
+        new_filename_ = "audio.mp3"
 
     user_data = await digital_botz.get_user_data(user_id)
     try:
