@@ -46,15 +46,14 @@ async def rename_start(client, message):
                 reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🪪 Uᴘɢʀᴀᴅᴇ Pʟᴀɴꜱ", callback_data="plans", style=ButtonStyle.SUCCESS)]])
             )
 
-    # --- FULLY AUTOMATIC RENAME LOGIC ---
+    # --- FULLY AUTOMATIC RENAME LOGIC (Audio, Video, Document sabhi ke liye) ---
     auto_name = user_data.get('auto_name', None) if user_data else None
     
     if auto_name:
-        # Auto-rename active hai: Bina pheeche ruke direct sequence number ke sath naam taiyar karein
         current_num = user_data.get('auto_number', 1401)
         new_name = auto_name.replace("{episode}", str(current_num))
         
-        # Agla episode number database mein turant +1 update karein
+        # Database mein number ko +1 increment karein
         await digital_botz.col.update_one({'_id': user_id}, {'$inc': {'auto_number': 1}})
         
         if not "." in new_name:
@@ -62,24 +61,19 @@ async def rename_start(client, message):
             new_name = new_name + "." + extn
         new_name = new_name.replace("\\", "/").split("/")[-1]
         
-        # Direct Document/Video buttons ke sath bhej dein (No manual reply needed)
         button = [[InlineKeyboardButton("📁 Dᴏᴄᴜᴍᴇɴᴛ", callback_data = "upload#document", style=ButtonStyle.PRIMARY)]]
-        if rkn_file in [MessageMediaType.VIDEO, MessageMediaType.DOCUMENT] if hasattr(rkn_file, 'media') else True:
-            # Media type ke hisab se button add karein
-            if message.media in [MessageMediaType.VIDEO, MessageMediaType.DOCUMENT]:
-                button.append([InlineKeyboardButton("🎥 Vɪᴅᴇᴏ", callback_data = "upload#video", style=ButtonStyle.PRIMARY)])
-            elif message.media == MessageMediaType.AUDIO:
-                button.append([InlineKeyboardButton("🎵 Aᴜᴅɪᴏ", callback_data = "upload#audio", style=ButtonStyle.PRIMARY)])
+        if message.media in [MessageMediaType.VIDEO, MessageMediaType.DOCUMENT]:
+            button.append([InlineKeyboardButton("🎥 Vɪᴅᴇᴏ", callback_data = "upload#video", style=ButtonStyle.PRIMARY)])
+        elif message.media == MessageMediaType.AUDIO:
+            button.append([InlineKeyboardButton("🎵 Aᴜᴅɪᴏ", callback_data = "upload#audio", style=ButtonStyle.PRIMARY)])
                 
-        # Hum message ko store karke seedha select type dikha denge ya direct process kar sakte hain
-        # Yahan hum existing upload callback flow maintain kar rahe hain:
-        sent_msg = await message.reply_text(
+        await message.reply_text(
             text=f"<b>Aᴜᴛᴏ-Rᴇɴᴀᴍᴇᴅ Fɪʟᴇ Nᴀᴍᴇ :-</b><code>{escape(str(new_name))}</code>\n\n<b>Sᴇʟᴇᴄᴛ Tʜᴇ Oᴜᴛᴩᴜᴛ Fɪʟᴇ Tyᴩᴇ 👇</b>",
             reply_markup=InlineKeyboardMarkup(button)
         )
         return
 
-    # --- NORMAL MANUAL RENAME FLOW (Agar Auto-Rename on nahi hai) ---
+    # --- MANUAL RENAME FLOW (Agar Auto-Name set nahi hai) ---
     media_info_text = (
         f"<b><i>ᴍᴇᴅɪᴀ ɪɴꜰᴏ:</i></b>\n\n"
         f"◈ ᴏʟᴅ ꜰɪʟᴇ ɴᴀᴍᴇ: <code>{escape(str(filename))}</code>\n\n"
@@ -87,7 +81,7 @@ async def rename_start(client, message):
         f"◈ ꜰɪʟᴇ ꜱɪᴢᴇ: <code>{filesize}</code>\n"
         f"◈ ᴍɪᴍᴇ ᴛʏᴩ: <code>{escape(str(mime_type))}</code>\n"
         f"◈ ᴅᴄ ɪᴅ: <code>{dcid}</code>\n\n"
-        "ᴘʟᴇᴀsᴇ ᴇɴᴛᴇʀ ᴛʜᴇ ɴᴇᴡ ғɪʟᴇɴᴀᴍᴇ ᴡɪᴛʜ ᴇxᴛᴇɴsɪᴏɴ ᴀɴᴅ ʀᴇᴘʟʏ ᴛʜɪs ᴍᴇssᴀɢᴇ...."
+        "ᴘʟᴇᴀsᴇ ᴇɴᴛᴇʀ ᴛʜᴇ ɴᴇᴡ ғɪʟᴇɴᴀᴍᴇ ᴡɪᴛ🇭 ᴇxᴛᴇɴsɪᴏɴ ᴀɴᴅ ʀᴇᴘʟʏ ᴛʜɪs ᴍᴇssᴀɢᴇ...."
     )
     
     if await digital_botz.has_premium_access(user_id) and client.premium:
@@ -167,7 +161,6 @@ async def upload_doc(bot, update):
         os.mkdir("Metadata")
     user_id = int(update.message.chat.id) 
     
-    # Text se file name extract karna (Chahe manual ho ya auto-rename)
     text_content = update.message.text
     if "Fɪʟᴇ Nᴀᴍᴇ :-" in text_content:
         new_filename_ = text_content.split("Fɪʟᴇ Nᴀᴍᴇ :-")[1].split("\n")[0].strip()
@@ -281,4 +274,4 @@ async def upload_doc(bot, update):
                 
     await remove_path(ph_path, file_path, dl_path, metadata_path)
     return await rkn_processing.edit("Uploaded Successfully....")
-        
+    
