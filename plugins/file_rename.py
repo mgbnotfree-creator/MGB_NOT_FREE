@@ -36,7 +36,7 @@ async def rename_start(client, message):
         
         return await message.reply_text(
             text=f"<b>Aᴜᴅɪᴏ Fɪʟᴇ Dᴇᴛᴇᴄᴛᴇᴅ!</b>\n<b>• Fɪʟᴇ Nᴀᴍᴇ :-</b><code>{escape(str(new_name))}</code>\n\n<b>Sᴇʟᴇᴄᴛ Tʜᴇ Oᴜᴛᴩᴜᴛ Tyᴩᴇ 👇</b>",
-            reply_parameters=ReplyParameters(message_id=message.id),
+            quote=True,
             reply_markup=InlineKeyboardMarkup(button)
         )
 
@@ -79,7 +79,7 @@ async def rename_start(client, message):
                 
         await message.reply_text(
             text=f"<b>Aᴜᴛᴏ-Rᴇɴᴀᴍᴇᴅ Fɪʟᴇ Nᴀᴍᴇ :-</b><code>{escape(str(new_name))}</code>\n\n<b>Sᴇʟᴇᴄᴛ Tʜᴇ Oᴜᴛᴩᴜᴛ Fɪʟᴇ Tyᴩᴇ 👇</b>",
-            reply_parameters=ReplyParameters(message_id=message.id),
+            quote=True,
             reply_markup=InlineKeyboardMarkup(button)
         )
         return
@@ -92,7 +92,7 @@ async def rename_start(client, message):
         f"◈ ꜰɪʟᴇ ꜱɪᴢᴇ: <code>{filesize}</code>\n"
         f"◈ ᴍɪᴍᴇ ᴛʏᴩ: <code>{escape(str(mime_type))}</code>\n"
         f"◈ ᴅᴄ ɪᴅ: <code>{dcid}</code>\n\n"
-        "ᴘʟᴇᴀsᴇ ᴇɴᴛᴇʀ ᴛʜᴇ ɴᴇᴡ ғɪʟᴇɴᴀᴍᴇ ᴡɪᴛʜ ᴇxᴛᴇɴsɪᴏɴ ᴀɴᴅ ʀᴇᴘʟʏ ᴛʜɪs ᴍᴇssᴀɢᴇ...."
+        "ᴘʟᴇᴀsᴇ ᴇɴᴛᴇʀ ᴛʜᴇ ɴᴇᴡ ғɪʟᴇɴᴀᴍᴇ ᴡɪᴛ🇭 ᴇxᴛᴇɴsɪᴏɴ ᴀɴᴅ ʀᴇᴘʟʏ ᴛʜɪs ᴍᴇssᴀɢᴇ...."
     )
     
     if await digital_botz.has_premium_access(user_id) and client.premium:
@@ -285,4 +285,4 @@ async def upload_doc(bot, update):
                 
     await remove_path(ph_path, file_path, dl_path, metadata_path)
     return await rkn_processing.edit("Uploaded Successfully....")
-    
+            
