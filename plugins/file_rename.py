@@ -8,7 +8,7 @@ from helper.utils import progress_for_pyrogram, convert, humanbytes, add_prefix_
 from helper.database import digital_botz
 from helper.ffmpeg import change_metadata, get_duration
 from config import Config, rkn
-import os, time, asyncio
+import os, time, asyncio, re
 from html import escape
 import logging
 
@@ -29,22 +29,40 @@ async def rename_start(client, message):
     dcid = FileId.decode(rkn_file.file_id).dc_id
     extension_type = mime_type.split('/')[0]
 
-    media_info_text = (
-        f"<b><i>ᴍᴇᴅɪᴀ ɪɴꜰᴏ:</i></b>\n\n"
-        f"◈ ᴏʟᴅ ꜰɪʟᴇ ɴᴀᴍᴇ: <code>{escape(str(filename))}</code>\n\n"
-        f"◈ ᴇxᴛᴇɴꜱɪᴏɴ: <code>{escape(extension_type.upper())}</code>\n"
-        f"◈ ꜰɪʟᴇ ꜱɪᴢᴇ: <code>{filesize}</code>\n"
-        f"◈ ᴍɪᴍᴇ ᴛʏᴩ: <code>{escape(str(mime_type))}</code>\n"
-        f"◈ ᴅᴄ ɪᴅ: <code>{dcid}</code>\n\n"
-        "ᴘʟᴇᴀsᴇ ᴇɴᴛᴇʀ ᴛʜᴇ ɴᴇᴡ ғɪʟᴇɴᴀᴍᴇ ᴡɪᴛʜ ᴇxᴛᴇɴsɪᴏɴ ᴀɴᴅ ʀᴇᴘʟʏ ᴛʜɪs ᴍᴇssᴀɢᴇ...."
-    )
+    # --- AUTO NUMBERING / EPISODE LOGIC ---
+    user_data = await digital_botz.get_user_data(user_id)
+    auto_name = user_data.get('auto_name', None) if user_data else None
+    
+    if auto_name:
+        # Agar user ka auto-rename active hai, toh number automatically increment karein
+        current_num = user_data.get('auto_number', 1401)
+        suggested_name = auto_name.replace("{episode}", str(current_num))
+        
+        # Extension check
+        if not "." in suggested_name:
+            extn = (filename or "").rsplit(".", 1)[-1] or "mkv"
+            suggested_name = suggested_name + "." + extn
+            
+        media_info_text = (
+            f"<b><i>ᴀᴜᴛᴏ ʀᴇɴᴀᴍᴇ ᴍᴏᴅᴇ ᴀᴄᴛɪᴠᴇ:</i></b>\n\n"
+            f"◈ ᴏʟᴅ ꜰɪʟᴇ ɴᴀᴍᴇ: <code>{escape(str(filename))}</code>\n"
+            f"◈ ɴᴇᴡ sᴜɢɢᴇsᴛᴇᴅ ɴᴀᴍᴇ: <code>{escape(str(suggested_name))}</code>\n\n"
+            "ᴘʟᴇᴀsᴇ ʀᴇᴘʟʏ <b>'yes'</b> ᴏʀ sᴇɴᴅ ᴀ ɴᴇᴡ ɴᴀᴍᴇ ɪꜰ ʏᴏᴜ ᴡᴀɴᴛ ᴛᴏ ᴄʜᴀɴɢᴇ ɪᴛ..."
+        )
+    else:
+        media_info_text = (
+            f"<b><i>ᴍᴇᴅɪᴀ ɪɴꜰᴏ:</i></b>\n\n"
+            f"◈ ᴏʟᴅ ꜰɪʟᴇ ɴᴀᴍᴇ: <code>{escape(str(filename))}</code>\n\n"
+            f"◈ ᴇxᴛᴇɴꜱɪᴏɴ: <code>{escape(extension_type.upper())}</code>\n"
+            f"◈ ꜰɪʟᴇ ꜱɪᴢᴇ: <code>{filesize}</code>\n"
+            f"◈ ᴍɪᴍᴇ ᴛʏᴩ: <code>{escape(str(mime_type))}</code>\n"
+            f"◈ ᴅᴄ ɪᴅ: <code>{dcid}</code>\n\n"
+            "ᴘʟᴇᴀsᴇ ᴇɴᴛᴇʀ ᴛʜᴇ ɴᴇᴡ ғɪʟᴇɴᴀᴍᴇ ᴡɪᴛʜ ᴇxᴛᴇɴsɪᴏɴ ᴀɴᴅ ʀᴇᴘʟʏ ᴛʜɪs ᴍᴇssᴀɢᴇ...."
+        )
 
     # --- DAILY FILE COUNT LIMIT CHECK ---
     if client.premium and client.uploadlimit:
-        user_data = await digital_botz.reset_uploadlimit_access(user_id)
         is_premium = await digital_botz.has_premium_access(user_id)
-        
-        # Normal user limit = 5 files, Paid user limit = 50 files per day
         max_limit = 50 if is_premium else 5
         used_count = user_data.get('used_limit', 0)
         
@@ -63,32 +81,20 @@ async def rename_start(client, message):
             if rkn_file.file_size > 2000 * 1024 * 1024:
                  return await message.reply_text("Sᴏʀʀy Bʀᴏ Tʜɪꜱ Bᴏᴛ Iꜱ Dᴏᴇꜱɴ'ᴛ Sᴜᴩᴩᴏʀᴛ Uᴩʟᴏᴀᴅɪɴɢ Fɪʟᴇꜱ Bɪɢɢᴇʀ Tʜᴀɴ 2Gʙ+")
         try:
-            await message.reply_text(
-                text=media_info_text,
-                reply_markup=ForceReply(True)
-            )
+            await message.reply_text(text=media_info_text, reply_markup=ForceReply(True))
         except FloodWait as e:
             await asyncio.sleep(e.value)
-            await message.reply_text(
-                text=media_info_text,
-                reply_markup=ForceReply(True)
-            )
+            await message.reply_text(text=media_info_text, reply_markup=ForceReply(True))
         except Exception as e:
             logger.exception("Error in rename_start: %s", e)
     else:
         if rkn_file.file_size > 2000 * 1024 * 1024 and client.premium:
             return await message.reply_text("If you want to rename 4GB+ files then you will have to buy premium. /plans")
         try:
-            await message.reply_text(
-                text=media_info_text,
-                reply_markup=ForceReply(True)
-            )
+            await message.reply_text(text=media_info_text, reply_markup=ForceReply(True))
         except FloodWait as e:
             await asyncio.sleep(e.value)
-            await message.reply_text(
-                text=media_info_text,
-                reply_markup=ForceReply(True)
-            )
+            await message.reply_text(text=media_info_text, reply_markup=ForceReply(True))
         except Exception as e:
             logger.exception("Error in rename_start (non-premium): %s", e)
 
@@ -97,8 +103,21 @@ async def refunc(client, message):
     reply_message = message.reply_to_message
     if (reply_message.reply_markup) and isinstance(reply_message.reply_markup, ForceReply):
         if rkn.SEND_METADATA.splitlines()[0] in (reply_message.text or ""):
-            return  # handled by metadata.save_metadata_code
-        new_name = message.text 
+            return  
+            
+        user_id = message.from_user.id
+        user_data = await digital_botz.get_user_data(user_id)
+        auto_name = user_data.get('auto_name', None) if user_data else None
+        
+        # Agar auto_name set hai aur user ne 'yes' ya kuch aisi command di hai toh auto sequence use karein
+        if auto_name and message.text.lower() == "yes":
+            current_num = user_data.get('auto_number', 1401)
+            new_name = auto_name.replace("{episode}", str(current_num))
+            # Agla number database mein update karein (+1)
+            await digital_botz.col.update_one({'_id': user_id}, {'$inc': {'auto_number': 1}})
+        else:
+            new_name = message.text 
+            
         await message.delete() 
         msg = await client.get_messages(message.chat.id, reply_message.id)
         file = msg.reply_to_message
@@ -108,11 +127,13 @@ async def refunc(client, message):
             new_name = new_name + "." + extn
         new_name = new_name.replace("\\", "/").split("/")[-1]
         await reply_message.delete()
-        button = [[InlineKeyboardButton("📁 Dᴏᴄᴜᴍᴇɴᴛ",callback_data = "upload#document", style=ButtonStyle.PRIMARY)]]
+        
+        button = [[InlineKeyboardButton("📁 Dᴏᴄᴜᴍᴇɴᴛ", callback_data = "upload#document", style=ButtonStyle.PRIMARY)]]
         if file.media in [MessageMediaType.VIDEO, MessageMediaType.DOCUMENT]:
             button.append([InlineKeyboardButton("🎥 Vɪᴅᴇᴏ", callback_data = "upload#video", style=ButtonStyle.PRIMARY)])
         elif file.media == MessageMediaType.AUDIO:
             button.append([InlineKeyboardButton("🎵 Aᴜᴅɪᴏ", callback_data = "upload#audio", style=ButtonStyle.PRIMARY)])
+            
         await client.send_message(
             chat_id=message.chat.id,
             text=f"<b>Sᴇʟᴇᴄᴛ Tʜᴇ Oᴜᴛᴩᴜᴛ Fɪʟᴇ Tyᴩᴇ</b>\n<b>• Fɪʟᴇ Nᴀᴍᴇ :-</b><code>{escape(str(new_name))}</code>",
@@ -125,31 +146,11 @@ async def upload_files(bot, sender_id, upload_type, file_path, ph_path, caption,
         if not os.path.exists(file_path):
             return None, f"File not found: {file_path}"
         if upload_type == "document":
-            filw = await bot.send_document(
-                sender_id,
-                document=file_path,
-                thumb=ph_path,
-                caption=caption,
-                progress=progress_for_pyrogram,
-                progress_args=(UPLOAD_TEXT, rkn_processing, time.time()))
+            filw = await bot.send_document(sender_id, document=file_path, thumb=ph_path, caption=caption, progress=progress_for_pyrogram, progress_args=(UPLOAD_TEXT, rkn_processing, time.time()))
         elif upload_type == "video":
-            filw = await bot.send_video(
-                sender_id,
-                video=file_path,
-                caption=caption,
-                thumb=ph_path,
-                duration=duration,
-                progress=progress_for_pyrogram,
-                progress_args=(UPLOAD_TEXT, rkn_processing, time.time()))
+            filw = await bot.send_video(sender_id, video=file_path, caption=caption, thumb=ph_path, duration=duration, progress=progress_for_pyrogram, progress_args=(UPLOAD_TEXT, rkn_processing, time.time()))
         elif upload_type == "audio":
-            filw = await bot.send_audio(
-                sender_id,
-                audio=file_path,
-                caption=caption,
-                thumb=ph_path,
-                duration=duration,
-                progress=progress_for_pyrogram,
-                progress_args=(UPLOAD_TEXT, rkn_processing, time.time()))
+            filw = await bot.send_audio(sender_id, audio=file_path, caption=caption, thumb=ph_path, duration=duration, progress=progress_for_pyrogram, progress_args=(UPLOAD_TEXT, rkn_processing, time.time()))
         else:
             return None, f"Unknown upload type: {upload_type}"
         return filw, None
@@ -171,7 +172,7 @@ async def upload_doc(bot, update):
         suffix = user_data.get('suffix', None)
         new_filename = await add_prefix_suffix(new_filename_, prefix, suffix)
     except Exception as e:
-        return await rkn_processing.edit(f"⚠️ Something went wrong can't able to set Prefix or Suffix ☹️ \n\n❄️ Contact My Creator -> @TechifyBots\nError: {escape(str(e))}")
+        return await rkn_processing.edit(f"⚠️ Error in Prefix/Suffix: {escape(str(e))}")
     
     file = update.message.reply_to_message
     media = getattr(file, file.media.value)
@@ -179,7 +180,6 @@ async def upload_doc(bot, update):
     metadata_path = f"Metadata/{new_filename}"
     await rkn_processing.edit("<code>Try To Download....</code>")
     
-    # Increment file count (+1 file used)
     if bot.premium and bot.uploadlimit:
         used = user_data.get('used_limit', 0)        
         total_used = int(used) + 1
@@ -193,10 +193,9 @@ async def upload_doc(bot, update):
             await digital_botz.set_used_limit(user_id, used_remove)
         return await rkn_processing.edit(f"Download Error: {escape(str(e))}")
 
-    # --- AUTO ARTIST / METADATA INJECTION ---
+    # --- AUTO ARTIST & METADATA ---
     metadata_mode = True  
     metadata = await digital_botz.get_metadata_code(user_id)
-    
     if metadata:
         if "--change-author" not in metadata:
             metadata += "\n--change-author @Digital_Botz"
@@ -206,9 +205,7 @@ async def upload_doc(bot, update):
     await rkn_processing.edit("<b><i>Pʟᴇᴀsᴇ Wᴀɪᴛ...</i></b>\n<b>Aᴅᴅɪɴɢ Aʀᴛɪsᴛ & Mᴇᴛᴀᴅᴀᴛᴀ Tᴏ Fɪʟᴇ....</b>")            
     if await change_metadata(dl_path, metadata_path, metadata):            
         await rkn_processing.edit("Metadata & Artist Added.....")
-        logger.info("Metadata and artist added successfully")
     else:
-        await rkn_processing.edit("Failed to add metadata, uploading original file...")
         metadata_mode = False
 
     duration = await get_duration(file_path if os.path.exists(file_path) else dl_path)
@@ -220,65 +217,56 @@ async def upload_doc(bot, update):
              caption = c_caption.format(filename=escape(str(new_filename)), filesize=escape(humanbytes(media.file_size)), duration=escape(str(convert(duration))))
          except Exception as e:
              if bot.premium and bot.uploadlimit:
-                 used_remove = int(used) - 1
-                 await digital_botz.set_used_limit(user_id, used_remove)
-             return await rkn_processing.edit(text=f"Yᴏᴜʀ Cᴀᴩᴛɪᴏɴ Eʀʀᴏʀ Exᴄᴇᴩᴛ Kᴇyᴡᴏʀᴅ Aʀɢᴜᴍᴇɴᴛ ●> ({escape(str(e))})")             
+                 await digital_botz.set_used_limit(user_id, int(used))
+             return await rkn_processing.edit(text=f"Caption Error: {escape(str(e))}")             
     else:
          caption = f"<b>{escape(str(new_filename))}</b>\n\n<b>User:</b> {escape(str(update.from_user.first_name))}\n<b>User ID:</b> <code>{user_id}</code>"
+         
     if (media.thumbs or c_thumb):
          try:
              if c_thumb:
                  ph_path = await bot.download_media(c_thumb) 
              else:
                  ph_path = await bot.download_media(media.thumbs[0].file_id)
-             
              if ph_path and os.path.exists(ph_path):
                  with Image.open(ph_path) as img:
                      img.convert("RGB").resize((320, 320), Image.Resampling.LANCZOS).save(ph_path, "JPEG")
          except Exception as e:
-             logger.exception("Error processing thumbnail: %s", e)
              ph_path = None
 
     upload_type = update.data.split("#")[1]
     final_file_path = metadata_path if metadata_mode and os.path.exists(metadata_path) else file_path
+    
     if media.file_size > 2000 * 1024 * 1024:
-        filw, error = await upload_files(
-            app, Config.LOG_CHANNEL, upload_type, final_file_path, 
-            ph_path, caption, duration, rkn_processing
-        )
+        filw, error = await upload_files(app, Config.LOG_CHANNEL, upload_type, final_file_path, ph_path, caption, duration, rkn_processing)
         if error:
             if bot.premium and bot.uploadlimit:
-                used_remove = int(used) - 1
-                await digital_botz.set_used_limit(user_id, used_remove)
+                await digital_botz.set_used_limit(user_id, int(used))
             await remove_path(ph_path, file_path, dl_path, metadata_path)
             return await rkn_processing.edit(f"Upload Error: {escape(str(error))}")
-
         from_chat = filw.chat.id
         mg_id = filw.id
         if Config.BIN_CHANNEL:
             try:
                 await bot.copy_message(chat_id=Config.BIN_CHANNEL, from_chat_id=from_chat, message_id=mg_id)
             except Exception:
-                logger.exception("bin channel copy failed, continuing with user copy")
+                pass
         await asyncio.sleep(2)
         await bot.copy_message(update.from_user.id, from_chat, mg_id)
         await bot.delete_messages(from_chat, mg_id)
     else:
-        filw, error = await upload_files(
-            bot, update.message.chat.id, upload_type, final_file_path, 
-            ph_path, caption, duration, rkn_processing
-        )
+        filw, error = await upload_files(bot, update.message.chat.id, upload_type, final_file_path, ph_path, caption, duration, rkn_processing)
         if error:
             if bot.premium and bot.uploadlimit:
-                used_remove = int(used) - 1
-                await digital_botz.set_used_limit(user_id, used_remove)
+                await digital_botz.set_used_limit(user_id, int(used))
             await remove_path(ph_path, file_path, dl_path, metadata_path)
             return await rkn_processing.edit(f"Upload Error: {escape(str(error))}")
         if Config.BIN_CHANNEL:
             try:
                 await bot.copy_message(chat_id=Config.BIN_CHANNEL, from_chat_id=filw.chat.id, message_id=filw.id)
             except Exception:
-                logger.exception("bin channel copy failed, file already delivered to user")
+                pass
+                
     await remove_path(ph_path, file_path, dl_path, metadata_path)
     return await rkn_processing.edit("Uploaded Successfully....")
-        
+            
