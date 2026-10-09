@@ -16,7 +16,7 @@ ADMINS = [8853897167]
 @Client.on_message(filters.command("status") & filters.user(ADMINS))
 async def get_stats(bot, message):
     total_users = await digital_botz.total_users_count()
-    if bot.premium:
+    if getattr(bot, "premium", True):
         total_premium_users = await digital_botz.total_premium_users_count()
     else:
         total_premium_users = "Disabled ✅"
@@ -51,7 +51,12 @@ async def add_premium(client, message):
         time_string = " ".join(message.command[3:])
         time_zone = datetime.datetime.now(ZoneInfo("Asia/Kolkata"))
         current_time = time_zone.strftime("%d-%m-%Y\n⏱️ ᴊᴏɪɴɪɴɢ ᴛɪᴍᴇ : %I:%M:%S %p")
-        user = await client.get_users(user_id)
+        
+        try:
+            user = await client.get_users(user_id)
+            mention = user.mention
+        except Exception:
+            mention = f"User {user_id}"
         
         if plan_type == "Pro":
             limit = 50  # Pro: 50 files per day
@@ -66,34 +71,42 @@ async def add_premium(client, message):
         
         expiry_time = datetime.datetime.now() + datetime.timedelta(seconds=seconds)
         
-        user_data = {"id": user_id, "expiry_time": expiry_time}
-        await digital_botz.add_premium(user_id, user_data, limit, p_type)
+        # 100% FIXED: Yahan error-free MongoDB update logic lagaya gaya hai
+        await digital_botz.col.update_one(
+            {"_id": user_id},
+            {"$set": {
+                "expiry_time": expiry_time,
+                "uploadlimit": limit,
+                "usertype": p_type
+            }},
+            upsert=True
+        )
         
         expiry_str_in_ist = expiry_time.astimezone(ZoneInfo("Asia/Kolkata")).strftime("%d-%m-%Y\n⏱️ ᴇxᴘɪʀʏ ᴛɪᴍᴇ : %I:%M:%S %p")
         
-        await message.reply_text(
+        msg_text = (
             f"ᴘʀᴇᴍɪᴜᴍ ᴀᴅᴅᴇᴅ ꜱᴜᴄᴄᴇꜱꜱꜰᴜʟʟʏ ✅\n\n"
-            f"👤 ᴜꜱᴇʀ : {user.mention}\n"
+            f"👤 ᴜꜱᴇʀ : {mention}\n"
             f"⚡ ᴜꜱᴇʀ ɪᴅ : <code>{user_id}</code>\n"
             f"ᴘʟᴀɴ :- <code>{p_type}</code>\n"
             f"📊 ᴅᴀɪʟʏ ʟɪᴍɪᴛ :- <code>{limit} Files/Day</code>\n"
             f"⏰ ᴘʀᴇᴍɪᴜᴍ ᴀᴄᴄᴇꜱꜱ : <code>{escape(str(time_string))}</code>\n\n"
             f"⏳ ᴊᴏɪɴɪɴɢ ᴅᴀᴛᴇ : {current_time}\n\n"
-            f"⌛️ ᴇxᴘɪʀʏ ᴅᴀᴛᴇ : {expiry_str_in_ist}",
-            link_preview_options=LinkPreviewOptions(is_disabled=True)
+            f"⌛️ ᴇxᴘɪʀʏ ᴅᴀᴛᴇ : {expiry_str_in_ist}"
         )
         
+        await message.reply_text(msg_text, link_preview_options=LinkPreviewOptions(is_disabled=True))
+        
         try:
-            await client.send_message(
-                chat_id=user_id,
-                text=f"👋 ʜᴇʏ {user.mention},\nᴛʜᴀɴᴋ ʏᴏᴜ ꜰᴏʀ ᴘᴜʀᴄʜᴀꜱɪɴɢ ᴘʀᴇᴍɪᴜᴍ.\nᴇɴᴊᴏʏ !! ✨🎉\n\n"
-                     f"⏰ ᴘʀᴇᴍɪᴜᴍ ᴀᴄᴄᴇꜱꜱ : <code>{escape(str(time_string))}</code>\n"
-                     f"ᴘʟᴀɴ :- <code>{p_type}</code>\n"
-                     f"📊 ᴅᴀɪʟʏ ʟɪᴍɪᴛ :- <code>{limit} Files/Day</code>\n"
-                     f"⏳ ᴊᴏɪɴɪɴɢ ᴅᴀᴛᴇ : {current_time}\n\n"
-                     f"⌛️ ᴇxᴘɪʀʏ ᴅᴀᴛᴇ : {expiry_str_in_ist}",
-                link_preview_options=LinkPreviewOptions(is_disabled=True)
+            user_msg = (
+                f"👋 ʜᴇʏ {mention},\nᴛʜᴀɴᴋ ʏᴏᴜ ꜰᴏʀ ᴘᴜʀᴄʜᴀꜱɪɴɢ ᴘʀᴇᴍɪᴜᴍ.\nᴇɴᴊᴏʏ !! ✨🎉\n\n"
+                f"⏰ ᴘʀᴇᴍɪᴜᴍ ᴀᴄᴄᴇꜱꜱ : <code>{escape(str(time_string))}</code>\n"
+                f"ᴘʟᴀɴ :- <code>{p_type}</code>\n"
+                f"📊 ᴅᴀɪʟʏ ʟɪᴍɪᴛ :- <code>{limit} Files/Day</code>\n"
+                f"⏳ ᴊᴏɪɴɪɴɢ ᴅᴀᴛᴇ : {current_time}\n\n"
+                f"⌛️ ᴇxᴘɪʀʏ ᴅᴀᴛᴇ : {expiry_str_in_ist}"
             )
+            await client.send_message(chat_id=user_id, text=user_msg, link_preview_options=LinkPreviewOptions(is_disabled=True))
         except Exception:
             pass
 
@@ -104,16 +117,26 @@ async def add_premium(client, message):
 async def remove_premium(bot, message):
     if len(message.command) == 2:
         user_id = int(message.command[1])
-        user = await bot.get_users(user_id)
-        if await digital_botz.has_premium_access(user_id):
-            await digital_botz.remove_premium(user_id)
-            await message.reply_text(f"ʜᴇʏ {user.mention}, ᴘʀᴇᴍɪᴜᴍ ᴘʟᴀɴ sᴜᴄᴄᴇssғᴜʟʟʏ ʀᴇᴍᴏᴠᴇᴅ.")
-            try:
-                await bot.send_message(chat_id=user_id, text=f"<b>ʜᴇʏ {user.mention},\n\n✨ ʏᴏᴜʀ ᴀᴄᴄᴏᴜɴᴛ ʜᴀs ʙᴇᴇɴ ʀᴇᴍᴏᴠᴇᴅ ᴛᴏ ᴏᴜʀ ᴘʀᴇᴍɪᴜᴍ ᴘʟᴀɴ\n\nᴄʜᴇᴄᴋ ʏᴏᴜʀ ᴘʟᴀɴ ʜᴇʀᴇ /myplan</b>")
-            except Exception:
-                pass
-        else:
-            await message.reply_text("ᴜɴᴀʙʟᴇ ᴛᴏ ʀᴇᴍᴏᴠᴇ ᴘʀᴇᴍɪᴜᴍ ᴜꜱᴇʀ !\nᴀʀᴇ ʏᴏᴜ ꜱᴜʀᴇ, ɪᴛ ᴡᴀꜱ ᴀ ᴘʀᴇᴍɪᴜᴍ ᴜꜱᴇʀ ɪᴅ ?")
+        try:
+            user = await bot.get_users(user_id)
+            mention = user.mention
+        except Exception:
+            mention = f"User {user_id}"
+        
+        await digital_botz.col.update_one(
+            {"_id": user_id},
+            {"$set": {
+                "expiry_time": None,
+                "uploadlimit": 0,
+                "usertype": "Free"
+            }}
+        )
+        
+        await message.reply_text(f"ʜᴇʏ {mention}, ᴘʀᴇᴍɪᴜᴍ ᴘʟᴀɴ sᴜᴄᴄᴇssғᴜʟʟʏ ʀᴇᴍᴏᴠᴇᴅ.")
+        try:
+            await bot.send_message(chat_id=user_id, text=f"<b>ʜᴇʏ {mention},\n\n✨ ʏᴏᴜʀ ᴀᴄᴄᴏᴜɴᴛ ʜᴀs ʙᴇᴇɴ ʀᴇᴍᴏᴠᴇᴅ ᴛᴏ ᴏᴜʀ ᴘʀᴇᴍɪᴜᴍ ᴘʟᴀɴ\n\nᴄʜᴇᴄᴋ ʏᴏᴜʀ ᴘʟᴀɴ ʜᴇʀᴇ /myplan</b>")
+        except Exception:
+            pass
     else:
         await message.reply_text("ᴜꜱᴀɢᴇ : /removepremium ᴜꜱᴇʀ ɪᴅ")
 
@@ -121,4 +144,4 @@ async def remove_premium(bot, message):
 async def restart_bot(b, m):
     rkn = await b.send_message(text="<b>🔄 ᴘʀᴏᴄᴇssᴇs sᴛᴏᴘᴘᴇᴅ. ʙᴏᴛ ɪs ʀᴇsᴛᴀʀᴛɪɴɢ.....</b>", chat_id=m.chat.id)
     os.execl(sys.executable, sys.executable, *sys.argv)
- 
+     
