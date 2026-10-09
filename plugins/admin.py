@@ -66,7 +66,8 @@ async def add_premium(client, message):
         
         expiry_time = datetime.datetime.now() + datetime.timedelta(seconds=seconds)
         
-        await digital_botz.add_premium(user_id, expiry_time, limit, p_type)
+        user_data = {"id": user_id, "expiry_time": expiry_time}
+        await digital_botz.add_premium(user_id, user_data, limit, p_type)
         
         expiry_str_in_ist = expiry_time.astimezone(ZoneInfo("Asia/Kolkata")).strftime("%d-%m-%Y\n⏱️ ᴇxᴘɪʀʏ ᴛɪᴍᴇ : %I:%M:%S %p")
         
@@ -120,4 +121,4 @@ async def remove_premium(bot, message):
 async def restart_bot(b, m):
     rkn = await b.send_message(text="<b>🔄 ᴘʀᴏᴄᴇssᴇs sᴛᴏᴘᴘᴇᴅ. ʙᴏᴛ ɪs ʀᴇsᴛᴀʀᴛɪɴɢ.....</b>", chat_id=m.chat.id)
     os.execl(sys.executable, sys.executable, *sys.argv)
-                                   
+ 
