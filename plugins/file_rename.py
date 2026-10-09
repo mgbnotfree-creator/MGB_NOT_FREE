@@ -27,16 +27,23 @@ async def rename_start(client, message):
 
     # --- DAILY FILE COUNT LIMIT CHECK ---
     user_data = await digital_botz.get_user_data(user_id)
-    if client.premium and client.uploadlimit:
+    if getattr(client, "premium", True) and getattr(client, "uploadlimit", True):
         is_premium = await digital_botz.has_premium_access(user_id)
-        max_limit = 50 if is_premium else 5
+        
+        # Fetching precise limit from database (5 for free, 50/100 for premium)
+        max_limit = user_data.get('uploadlimit', 50) if is_premium else 5
         used_count = user_data.get('used_limit', 0) if user_data else 0
         
+        # 100% FIXED: Agar database me purana byte size (jaise 38588947) hai, to use reset kar do
+        if used_count > 5000:
+            used_count = 0
+            await digital_botz.col.update_one({"_id": user_id}, {"$set": {"used_limit": 0}})
+        
         if used_count >= max_limit:
-            limit_type = "Paid (50 Files/Day)" if is_premium else "Normal (5 Files/Day)"
+            plan_type = user_data.get('usertype', 'Paid') if is_premium else 'Free'
             return await message.reply_text(
                 f"❌ <b>Dᴀɪʟʏ Uᴘʟᴏᴀᴅ Lɪᴍɪᴛ Rᴇᴀᴄʜᴇᴅ!</b>\n\n"
-                f"• Yᴏᴜʀ Pʟᴀɴ: <b>{limit_type}</b>\n"
+                f"• Yᴏᴜʀ Pʟᴀɴ: <b>{plan_type} ({max_limit} Files/Day)</b>\n"
                 f"• Tᴏᴅᴀʏ's Uꜱᴀɢᴇ: <b>{used_count}/{max_limit} files</b>\n\n"
                 f"Pʟᴇᴀsᴇ ᴛʀʏ ᴀɢᴀɪɴ ᴛᴏᴍᴏʀʀᴏᴡ ᴏʀ ᴜᴘɢʀᴀᴅᴇ ʏᴏᴜʀ ᴘʟᴀɴ.",
                 reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🪪 Uᴘɢʀᴀᴅᴇ Pʟᴀɴꜱ", callback_data="plans", style=ButtonStyle.SUCCESS)]])
@@ -110,17 +117,21 @@ async def upload_doc(bot, update):
     metadata_path = f"Metadata/{new_filename}"
     await rkn_processing.edit("<code>Try To Download....</code>")
     
-    if bot.premium and bot.uploadlimit:
-        used = user_data.get('used_limit', 0)        
+    # +1 Count Logic fixed to avoid crash with DB
+    used = user_data.get('used_limit', 0) if user_data else 0
+    if used > 5000:
+        used = 0
+    
+    if getattr(bot, "premium", True) and getattr(bot, "uploadlimit", True):
         total_used = int(used) + 1
-        await digital_botz.set_used_limit(user_id, total_used)
+        await digital_botz.col.update_one({"_id": user_id}, {"$set": {"used_limit": total_used}}, upsert=True)
         
     try:            
         dl_path = await bot.download_media(message=file, file_name=file_path, progress=progress_for_pyrogram, progress_args=(DOWNLOAD_TEXT, rkn_processing, time.time()))                    
     except Exception as e:
-        if bot.premium and bot.uploadlimit:
-            used_remove = int(used) - 1
-            await digital_botz.set_used_limit(user_id, used_remove)
+        if getattr(bot, "premium", True) and getattr(bot, "uploadlimit", True):
+            used_remove = max(0, int(used))
+            await digital_botz.col.update_one({"_id": user_id}, {"$set": {"used_limit": used_remove}})
         return await rkn_processing.edit(f"Download Error: {escape(str(e))}")
 
     metadata_mode = True  
@@ -145,8 +156,8 @@ async def upload_doc(bot, update):
          try:
              caption = c_caption.format(filename=escape(str(new_filename)), filesize=escape(humanbytes(media.file_size)), duration=escape(str(convert(duration))))
          except Exception as e:
-             if bot.premium and bot.uploadlimit:
-                 await digital_botz.set_used_limit(user_id, int(used))
+             if getattr(bot, "premium", True) and getattr(bot, "uploadlimit", True):
+                 await digital_botz.col.update_one({"_id": user_id}, {"$set": {"used_limit": int(used)}})
              return await rkn_processing.edit(text=f"Caption Error: {escape(str(e))}")             
     else:
          caption = f"<b>{escape(str(new_filename))}</b>\n\n<b>User:</b> {escape(str(update.from_user.first_name))}\n<b>User ID:</b> <code>{user_id}</code>"
@@ -169,8 +180,8 @@ async def upload_doc(bot, update):
     if media.file_size > 2000 * 1024 * 1024:
         filw, error = await upload_files(app, Config.LOG_CHANNEL, upload_type, final_file_path, ph_path, caption, duration, rkn_processing)
         if error:
-            if bot.premium and bot.uploadlimit:
-                await digital_botz.set_used_limit(user_id, int(used))
+            if getattr(bot, "premium", True) and getattr(bot, "uploadlimit", True):
+                await digital_botz.col.update_one({"_id": user_id}, {"$set": {"used_limit": int(used)}})
             await remove_path(ph_path, file_path, dl_path, metadata_path)
             return await rkn_processing.edit(f"Upload Error: {escape(str(error))}")
         from_chat = filw.chat.id
@@ -186,8 +197,8 @@ async def upload_doc(bot, update):
     else:
         filw, error = await upload_files(bot, update.message.chat.id, upload_type, final_file_path, ph_path, caption, duration, rkn_processing)
         if error:
-            if bot.premium and bot.uploadlimit:
-                await digital_botz.set_used_limit(user_id, int(used))
+            if getattr(bot, "premium", True) and getattr(bot, "uploadlimit", True):
+                await digital_botz.col.update_one({"_id": user_id}, {"$set": {"used_limit": int(used)}})
             await remove_path(ph_path, file_path, dl_path, metadata_path)
             return await rkn_processing.edit(f"Upload Error: {escape(str(error))}")
         if Config.BIN_CHANNEL:
@@ -198,3 +209,4 @@ async def upload_doc(bot, update):
                 
     await remove_path(ph_path, file_path, dl_path, metadata_path)
     return await rkn_processing.edit("Uploaded Successfully....")
+        
