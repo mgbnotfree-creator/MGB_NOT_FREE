@@ -65,13 +65,8 @@ async def add_premium(client, message):
             return await message.reply_text("❌ Invalid time format! Use e.g., <code>1 month</code>, <code>7 days</code>")
         
         expiry_time = datetime.datetime.now() + datetime.timedelta(seconds=seconds)
-        user_data = {"id": user_id, "expiry_time": expiry_time}
         
-        await digital_botz.add_premium(user_id, user_data, limit, p_type)
-        
-        u_data = await digital_botz.get_user_data(user_id)
-        final_limit = u_data.get('uploadlimit', limit) if u_data else limit
-        final_type = u_data.get('usertype', p_type) if u_data else p_type
+        await digital_botz.add_premium(user_id, expiry_time, limit, p_type)
         
         expiry_str_in_ist = expiry_time.astimezone(ZoneInfo("Asia/Kolkata")).strftime("%d-%m-%Y\n⏱️ ᴇxᴘɪʀʏ ᴛɪᴍᴇ : %I:%M:%S %p")
         
@@ -79,8 +74,8 @@ async def add_premium(client, message):
             f"ᴘʀᴇᴍɪᴜᴍ ᴀᴅᴅᴇᴅ ꜱᴜᴄᴄᴇꜱꜱꜰᴜʟʟʏ ✅\n\n"
             f"👤 ᴜꜱᴇʀ : {user.mention}\n"
             f"⚡ ᴜꜱᴇʀ ɪᴅ : <code>{user_id}</code>\n"
-            f"ᴘʟᴀɴ :- <code>{final_type}</code>\n"
-            f"📊 ᴅᴀɪʟʏ ʟɪᴍɪᴛ :- <code>{final_limit} Files/Day</code>\n"
+            f"ᴘʟᴀɴ :- <code>{p_type}</code>\n"
+            f"📊 ᴅᴀɪʟʏ ʟɪᴍɪᴛ :- <code>{limit} Files/Day</code>\n"
             f"⏰ ᴘʀᴇᴍɪᴜᴍ ᴀᴄᴄᴇꜱꜱ : <code>{escape(str(time_string))}</code>\n\n"
             f"⏳ ᴊᴏɪɴɪɴɢ ᴅᴀᴛᴇ : {current_time}\n\n"
             f"⌛️ ᴇxᴘɪʀʏ ᴅᴀᴛᴇ : {expiry_str_in_ist}",
@@ -92,8 +87,8 @@ async def add_premium(client, message):
                 chat_id=user_id,
                 text=f"👋 ʜᴇʏ {user.mention},\nᴛʜᴀɴᴋ ʏᴏᴜ ꜰᴏʀ ᴘᴜʀᴄʜᴀꜱɪɴɢ ᴘʀᴇᴍɪᴜᴍ.\nᴇɴᴊᴏʏ !! ✨🎉\n\n"
                      f"⏰ ᴘʀᴇᴍɪᴜᴍ ᴀᴄᴄᴇꜱꜱ : <code>{escape(str(time_string))}</code>\n"
-                     f"ᴘʟᴀɴ :- <code>{final_type}</code>\n"
-                     f"📊 ᴅᴀɪʟʏ ʟɪᴍɪᴛ :- <code>{final_limit} Files/Day</code>\n"
+                     f"ᴘʟᴀɴ :- <code>{p_type}</code>\n"
+                     f"📊 ᴅᴀɪʟʏ ʟɪᴍɪᴛ :- <code>{limit} Files/Day</code>\n"
                      f"⏳ ᴊᴏɪɴɪɴɢ ᴅᴀᴛᴇ : {current_time}\n\n"
                      f"⌛️ ᴇxᴘɪʀʏ ᴅᴀᴛᴇ : {expiry_str_in_ist}",
                 link_preview_options=LinkPreviewOptions(is_disabled=True)
@@ -125,4 +120,4 @@ async def remove_premium(bot, message):
 async def restart_bot(b, m):
     rkn = await b.send_message(text="<b>🔄 ᴘʀᴏᴄᴇssᴇs sᴛᴏᴘᴘᴇᴅ. ʙᴏᴛ ɪs ʀᴇsᴛᴀʀᴛɪɴɢ.....</b>", chat_id=m.chat.id)
     os.execl(sys.executable, sys.executable, *sys.argv)
- 
+                                   
