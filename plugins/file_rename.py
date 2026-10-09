@@ -19,13 +19,9 @@ logger = logging.getLogger(__name__)
 
 app = Client("4gb_FileRenameBot", api_id=Config.API_ID, api_hash=Config.API_HASH, session_string=Config.STRING_SESSION, parse_mode=ParseMode.HTML)
 
-# 100% FIXED: लाइन-बाय-लाइन (Queue) सिस्टम के लिए asyncio.Queue
-class UserQueue:
-    def __init__(self):
-        self.queue = asyncio.Queue()
-        self.is_running = False
-
-user_queues = {}
+# 100% FIXED: स्मार्ट बैच सिस्टम (एक साथ भेजी गई फाइलों को सीक्वेंस में रखने के लिए)
+user_batch = {}
+batch_lock = asyncio.Lock()
 
 async def upload_files(bot, sender_id, upload_type, file_path, ph_path, caption, duration, rkn_processing):
     try:
@@ -46,9 +42,12 @@ async def upload_files(bot, sender_id, upload_type, file_path, ph_path, caption,
 async def process_file(bot, message):
     user_id = message.from_user.id
     
+    # 100% FIXED: नाम को क्लीन करना ताकि FFmpeg कभी क्रैश न हो
     first_name = message.from_user.first_name or "Unknown"
-    last_name = message.from_user.last_name or ""
-    sender_name = f"{first_name} {last_name}".strip()
+    clean_name = re.sub(r'[^a-zA-Z0-9]', '', first_name)
+    if not clean_name:
+        clean_name = "User"
+    sender_name = f"@{clean_name}"
     
     rkn_processing = await message.reply_text("<code>Processing...</code>")
     
@@ -121,8 +120,8 @@ async def process_file(bot, message):
     metadata_mode = True  
     metadata = await digital_botz.get_metadata_code(user_id)
     
-    # FIXED: स्पेस की वजह से आने वाली एरर को खत्म करने के लिए डबल कोट्स (" ") का उपयोग
-    custom_artist = f'"{sender_name}"'
+    # अब नाम बिना स्पेस और कोट्स के जाएगा (जैसे @MISS), ताकि कोई एरर न हो
+    custom_artist = sender_name
     
     if metadata:
         if "--change-author" not in metadata:
@@ -199,36 +198,30 @@ async def process_file(bot, message):
                 pass
                 
     await remove_path(ph_path, file_path, dl_path, metadata_path)
-    
-    # 100% FIXED: 'Uploaded Successfully' वाला मैसेज अब सीधे डिलीट हो जाएगा
     await rkn_processing.delete()
-
-# बैकग्राउंड वर्कर जो कतार (Queue) से फाइलों को एक-एक करके निकालेगा
-async def process_queue(bot, user_id):
-    while not user_queues[user_id].queue.empty():
-        message = await user_queues[user_id].queue.get()
-        try:
-            await process_file(bot, message)
-        except Exception as e:
-            logger.error(f"Error processing file for {user_id}: {e}")
-        finally:
-            user_queues[user_id].queue.task_done()
-            
-    user_queues[user_id].is_running = False
 
 @Client.on_message(filters.private & (filters.audio | filters.document | filters.video))
 async def auto_rename_start(bot, message):
     user_id = message.from_user.id
     
-    # अगर यूजर पहली बार फाइल भेज रहा है, तो उसके लिए कतार (Queue) बना लें
-    if user_id not in user_queues:
-        user_queues[user_id] = UserQueue()
-        
-    # मैसेज को कतार में डाल दें (ताकि सब कुछ लाइन बाय लाइन हो)
-    await user_queues[user_id].queue.put(message)
+    # 1. जैसे ही फाइलें आती हैं, उन्हें बैच (Batch) में डाल दें
+    async with batch_lock:
+        if user_id not in user_batch:
+            user_batch[user_id] = []
+        user_batch[user_id].append(message)
     
-    # अगर वर्कर चालू नहीं है, तो उसे चालू कर दें
-    if not user_queues[user_id].is_running:
-        user_queues[user_id].is_running = True
-        asyncio.create_task(process_queue(bot, user_id))
-                       
+    # 2. 2.5 सेकंड का इंतज़ार करें ताकि सभी फॉरवर्ड की गई फाइलें इकट्ठा हो जाएँ
+    await asyncio.sleep(2.5)
+    
+    async with batch_lock:
+        if not user_batch.get(user_id):
+            return # अगर किसी और प्रोसेस ने बैच खाली कर दिया है, तो रुक जाएँ
+        
+        # 3. सभी फाइलों को उनके ऑरिजिनल मैसेज आईडी (m.id) के अनुसार क्रमबद्ध (Sort) करें
+        sorted_messages = sorted(user_batch[user_id], key=lambda m: m.id)
+        user_batch[user_id] = [] # बैच को रीसेट करें
+        
+    # 4. अब एक-एक करके एकदम सही क्रम में (Line by Line) प्रोसेस करें
+    for msg in sorted_messages:
+        await process_file(bot, msg)
+                                         
