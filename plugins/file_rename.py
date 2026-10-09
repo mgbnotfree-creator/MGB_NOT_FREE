@@ -1,128 +1,200 @@
-from config import Config
-from helper.database import digital_botz
-from helper.utils import get_seconds, humanbytes
-import os, sys, time, asyncio, logging, datetime, traceback
-from zoneinfo import ZoneInfo
-from pyrogram.types import Message, LinkPreviewOptions
 from pyrogram import Client, filters
+from pyrogram.enums import ButtonStyle, MessageMediaType, ParseMode
+from pyrogram.errors import FloodWait
+from pyrogram.file_id import FileId
+from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+from PIL import Image
+from helper.utils import progress_for_pyrogram, convert, humanbytes, add_prefix_suffix, remove_path
+from helper.database import digital_botz
+from helper.ffmpeg import change_metadata, get_duration
+from config import Config, rkn
+import os, time, asyncio, re
 from html import escape
-from pyrogram.errors import FloodWait, InputUserDeactivated, UserIsBlocked, PeerIdInvalid
+import logging
+
+UPLOAD_TEXT = """Uploading Started...."""
+DOWNLOAD_TEXT = """Download Started..."""
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
 
-ADMINS = [8853897167]
- 
-@Client.on_message(filters.command("status") & filters.user(ADMINS))
-async def get_stats(bot, message):
-    total_users = await digital_botz.total_users_count()
-    if bot.premium:
-        total_premium_users = await digital_botz.total_premium_users_count()
-    else:
-        total_premium_users = "Disabled ✅"
-    uptime = time.strftime("%Hh%Mm%Ss", time.gmtime(time.time() - bot.uptime))    
-    start_t = time.time()
-    rkn = await message.reply('<b>ᴘʀᴏᴄᴇssɪɴɢ.....</b>')    
-    end_t = time.time()
-    time_taken_s = (end_t - start_t) * 1000
-    await rkn.edit(text=f"<b>--Bᴏᴛ Sᴛᴀᴛᴜꜱ--</b> \n\n<b>⌚️ Bᴏᴛ Uᴩᴛɪᴍᴇ:</b> {uptime} \n<b>🐌 Cᴜʀʀᴇɴᴛ Pɪɴɢ:</b> <code>{time_taken_s:.3f} ᴍꜱ</code> \n<b>👭 Tᴏᴛᴀʟ Uꜱᴇʀꜱ:</b> <code>{total_users}</code>\n<b>💸 ᴛᴏᴛᴀʟ ᴘʀᴇᴍɪᴜᴍ ᴜsᴇʀs:</b> <code>{total_premium_users}</code>")
- 
-@Client.on_message(filters.command('logs') & filters.user(ADMINS))
-async def log_file(b, m):
-    try:
-        await m.reply_document(Config.LOG_FILE)
-    except Exception as e:
-        await m.reply(str(e))
+app = Client("4gb_FileRenameBot", api_id=Config.API_ID, api_hash=Config.API_HASH, session_string=Config.STRING_SESSION, parse_mode=ParseMode.HTML)
 
-@Client.on_message(filters.private & filters.command("givepro"))
-async def add_premium(client, message):
-    if message.from_user.id not in ADMINS:
-        return await message.reply_text("❌ <b>Aap is command ko use nahi kar sakte! Yeh sirf Admin ke liye hai.</b>")
+@Client.on_message(filters.private & (filters.audio | filters.document | filters.video))
+async def rename_start(client, message):
+    user_id  = message.from_user.id
+    rkn_file = getattr(message, message.media.value)
+    filename = getattr(rkn_file, "file_name", "file.mkv")
 
-    try:
-        if len(message.command) < 4:
-            return await message.reply_text("<b>Usage :</b>\n<code>/givepro user_id Pro 1 month</code>\n<i>or</i>\n<code>/givepro user_id UltraPro 1 month</code>")
+    # --- DAILY FILE COUNT LIMIT CHECK ---
+    user_data = await digital_botz.get_user_data(user_id)
+    if client.premium and client.uploadlimit:
+        is_premium = await digital_botz.has_premium_access(user_id)
+        max_limit = 50 if is_premium else 5
+        used_count = user_data.get('used_limit', 0) if user_data else 0
         
-        user_id = int(message.command[1])
-        plan_type = message.command[2]
-        if plan_type not in ["Pro", "UltraPro"]:
-            return await message.reply_text("❌ Invalid Plan Type. Please use <code>Pro</code> or <code>UltraPro</code>.")
-        
-        time_string = " ".join(message.command[3:])
-        time_zone = datetime.datetime.now(ZoneInfo("Asia/Kolkata"))
-        current_time = time_zone.strftime("%d-%m-%Y\n⏱️ ᴊᴏɪɴɪɴɢ ᴛɪᴍᴇ : %I:%M:%S %p")
-        user = await client.get_users(user_id)
-        
-        if plan_type == "Pro":
-            limit = 50  # Pro: 50 files per day
-            p_type = "Pro"
-        elif plan_type == "UltraPro":
-            limit = 100 # UltraPro: 100 files per day
-            p_type = "UltraPro"
-
-        seconds = await get_seconds(time_string)
-        if seconds <= 0:
-            return await message.reply_text("❌ Invalid time format! Use e.g., <code>1 month</code>, <code>7 days</code>")
-        
-        expiry_time = datetime.datetime.now() + datetime.timedelta(seconds=seconds)
-        user_data = {"id": user_id, "expiry_time": expiry_time}
-        
-        await digital_botz.add_premium(user_id, user_data, limit, p_type)
-        
-        u_data = await digital_botz.get_user_data(user_id)
-        final_limit = u_data.get('uploadlimit', limit) if u_data else limit
-        final_type = u_data.get('usertype', p_type) if u_data else p_type
-        
-        expiry_str_in_ist = expiry_time.astimezone(ZoneInfo("Asia/Kolkata")).strftime("%d-%m-%Y\n⏱️ ᴇxᴘɪʀʏ ᴛɪᴍᴇ : %I:%M:%S %p")
-        
-        await message.reply_text(
-            f"ᴘʀᴇᴍɪᴜᴍ ᴀᴅᴅᴇᴅ ꜱᴜᴄᴄᴇꜱꜱꜰᴜʟʟʏ ✅\n\n"
-            f"👤 ᴜꜱᴇʀ : {user.mention}\n"
-            f"⚡ ᴜꜱᴇʀ ɪᴅ : <code>{user_id}</code>\n"
-            f"ᴘʟᴀɴ :- <code>{final_type}</code>\n"
-            f"📊 ᴅᴀɪʟʏ ʟɪᴍɪᴛ :- <code>{final_limit} Files/Day</code>\n"
-            f"⏰ ᴘʀᴇᴍɪᴜᴍ ᴀᴄᴄᴇꜱꜱ : <code>{escape(str(time_string))}</code>\n\n"
-            f"⏳ ᴊᴏɪɴɪɴɢ ᴅᴀᴛᴇ : {current_time}\n\n"
-            f"⌛️ ᴇxᴘɪʀʏ ᴅᴀᴛᴇ : {expiry_str_in_ist}",
-            link_preview_options=LinkPreviewOptions(is_disabled=True)
-        )
-        
-        try:
-            await client.send_message(
-                chat_id=user_id,
-                text=f"👋 ʜᴇʏ {user.mention},\nᴛʜᴀɴᴋ ʏᴏᴜ ꜰᴏʀ ᴘᴜʀᴄʜᴀꜱɪɴɢ ᴘʀᴇᴍɪᴜᴍ.\nᴇɴᴊᴏʏ !! ✨🎉\n\n"
-                     f"⏰ ᴘʀᴇᴍɪᴜᴍ ᴀᴄᴄᴇꜱꜱ : <code>{escape(str(time_string))}</code>\n"
-                     f"ᴘʟᴀɴ :- <code>{final_type}</code>\n"
-                     f"📊 ᴅᴀɪʟʏ ʟɪᴍɪᴛ :- <code>{final_limit} Files/Day</code>\n"
-                     f"⏳ ᴊᴏɪɴɪɴɢ ᴅᴀᴛᴇ : {current_time}\n\n"
-                     f"⌛️ ᴇxᴘɪʀʏ ᴅᴀᴛᴇ : {expiry_str_in_ist}",
-                link_preview_options=LinkPreviewOptions(is_disabled=True)
+        if used_count >= max_limit:
+            limit_type = "Paid (50 Files/Day)" if is_premium else "Normal (5 Files/Day)"
+            return await message.reply_text(
+                f"❌ <b>Dᴀɪʟʏ Uᴘʟᴏᴀᴅ Lɪᴍɪᴛ Rᴇᴀᴄʜᴇᴅ!</b>\n\n"
+                f"• Yᴏᴜʀ Pʟᴀɴ: <b>{limit_type}</b>\n"
+                f"• Tᴏᴅᴀʏ's Uꜱᴀɢᴇ: <b>{used_count}/{max_limit} files</b>\n\n"
+                f"Pʟᴇᴀsᴇ ᴛʀʏ ᴀɢᴀɪɴ ᴛᴏᴍᴏʀʀᴏᴡ ᴏʀ ᴜᴘɢʀᴀᴅᴇ ʏᴏᴜʀ ᴘʟᴀɴ.",
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🪪 Uᴘɢʀᴀᴅᴇ Pʟᴀɴꜱ", callback_data="plans", style=ButtonStyle.SUCCESS)]])
             )
-        except Exception:
-            pass
 
+    # --- FULLY AUTOMATIC DEFAULT NAME FLOW (No Command / No Manual Typing Needed) ---
+    new_name = filename or "file.mkv"
+    new_name = new_name.replace("\\", "/").split("/")[-1]
+    
+    button = [[InlineKeyboardButton("📁 Dᴏᴄᴜᴍᴇɴᴛ", callback_data = "upload#document", style=ButtonStyle.PRIMARY)]]
+    if message.media == MessageMediaType.VIDEO:
+        button.append([InlineKeyboardButton("🎥 Vɪᴅᴇᴏ", callback_data = "upload#video", style=ButtonStyle.PRIMARY)])
+    elif message.media == MessageMediaType.AUDIO:
+        button.append([InlineKeyboardButton("🎵 Aᴜᴅɪᴏ", callback_data = "upload#audio", style=ButtonStyle.PRIMARY)])
+    elif message.media == MessageMediaType.DOCUMENT:
+        button.append([InlineKeyboardButton("🎥 Vɪᴅᴇᴏ", callback_data = "upload#video", style=ButtonStyle.PRIMARY)])
+            
+    await message.reply_text(
+        text=f"<b>Fɪʟᴇ Dᴇᴛᴇᴄᴛᴇᴅ!</b>\n<b>• Dᴇꜰᴀᴜʟᴛ Nᴀᴍᴇ :-</b><code>{escape(str(new_name))}</code>\n\n<b>Sᴇʟᴇᴄᴛ Tʜᴇ Oᴜᴛᴩᴜᴛ Tyᴩᴇ 👇</b>",
+        reply_markup=InlineKeyboardMarkup(button)
+    )
+
+async def upload_files(bot, sender_id, upload_type, file_path, ph_path, caption, duration, rkn_processing):
+    try:
+        if not os.path.exists(file_path):
+            return None, f"File not found: {file_path}"
+        if upload_type == "document":
+            filw = await bot.send_document(sender_id, document=file_path, thumb=ph_path, caption=caption, progress=progress_for_pyrogram, progress_args=(UPLOAD_TEXT, rkn_processing, time.time()))
+        elif upload_type == "video":
+            filw = await bot.send_video(sender_id, video=file_path, caption=caption, thumb=ph_path, duration=duration, progress=progress_for_pyrogram, progress_args=(UPLOAD_TEXT, rkn_processing, time.time()))
+        elif upload_type == "audio":
+            filw = await bot.send_audio(sender_id, audio=file_path, caption=caption, thumb=ph_path, duration=duration, progress=progress_for_pyrogram, progress_args=(UPLOAD_TEXT, rkn_processing, time.time()))
+        else:
+            return None, f"Unknown upload type: {upload_type}"
+        return filw, None
     except Exception as e:
-        await message.reply_text(f"❌ <b>Error:</b>\n<code>{escape(str(e))}</code>")
+        return None, str(e)
 
-@Client.on_message(filters.command("removepremium") & filters.user(ADMINS))
-async def remove_premium(bot, message):
-    if len(message.command) == 2:
-        user_id = int(message.command[1])
-        user = await bot.get_users(user_id)
-        if await digital_botz.has_premium_access(user_id):
-            await digital_botz.remove_premium(user_id)
-            await message.reply_text(f"ʜᴇʏ {user.mention}, ᴘʀᴇᴍɪᴜᴍ ᴘʟᴀɴ sᴜᴄᴄᴇssғᴜʟʟʏ ʀᴇᴍᴏᴠᴇᴅ.")
+@Client.on_callback_query(filters.regex("upload#"), group=-5)
+async def upload_doc(bot, update):
+    await update.answer()
+    rkn_processing = await update.message.edit("<code>Processing...</code>")
+    if not os.path.isdir("Metadata"):
+        os.mkdir("Metadata")
+    user_id = int(update.message.chat.id) 
+    
+    text_content = update.message.text
+    if "Dᴇꜰᴀᴜʟᴛ Nᴀᴍᴇ :-" in text_content:
+        new_filename_ = text_content.split("Dᴇꜰᴀᴜʟᴛ Nᴀᴍᴇ :-")[1].split("\n")[0].strip()
+    elif "Fɪʟᴇ Nᴀᴍᴇ :-" in text_content:
+        new_filename_ = text_content.split("Fɪʟᴇ Nᴀᴍᴇ :-")[1].split("\n")[0].strip()
+    elif ":-" in text_content:
+        new_filename_ = text_content.split(":-")[1].split("\n")[0].strip()
+    else:
+        new_filename_ = "file.mkv"
+
+    user_data = await digital_botz.get_user_data(user_id)
+    try:
+        prefix = user_data.get('prefix', None)
+        suffix = user_data.get('suffix', None)
+        new_filename = await add_prefix_suffix(new_filename_, prefix, suffix)
+    except Exception as e:
+        return await rkn_processing.edit(f"⚠️ Error in Prefix/Suffix: {escape(str(e))}")
+    
+    file = update.message.reply_to_message
+    if not file or not file.media:
+        return await rkn_processing.edit("⚠️ Original file missing.")
+        
+    media = getattr(file, file.media.value)
+    file_path = f"Renames/{new_filename}"
+    metadata_path = f"Metadata/{new_filename}"
+    await rkn_processing.edit("<code>Try To Download....</code>")
+    
+    if bot.premium and bot.uploadlimit:
+        used = user_data.get('used_limit', 0)        
+        total_used = int(used) + 1
+        await digital_botz.set_used_limit(user_id, total_used)
+        
+    try:            
+        dl_path = await bot.download_media(message=file, file_name=file_path, progress=progress_for_pyrogram, progress_args=(DOWNLOAD_TEXT, rkn_processing, time.time()))                    
+    except Exception as e:
+        if bot.premium and bot.uploadlimit:
+            used_remove = int(used) - 1
+            await digital_botz.set_used_limit(user_id, used_remove)
+        return await rkn_processing.edit(f"Download Error: {escape(str(e))}")
+
+    metadata_mode = True  
+    metadata = await digital_botz.get_metadata_code(user_id)
+    if metadata:
+        if "--change-author" not in metadata:
+            metadata += "\n--change-author @Digital_Botz"
+    else:
+        metadata = "--change-author @Digital_Botz"
+
+    await rkn_processing.edit("<b><i>Pʟᴇᴀsᴇ Wᴀɪᴛ...</i></b>\n<b>Aᴅᴅɪɴɢ Aʀᴛɪsᴛ & Mᴇᴛᴀᴅᴀᴛᴀ Tᴏ Fɪʟᴇ....</b>")            
+    if await change_metadata(dl_path, metadata_path, metadata):            
+        await rkn_processing.edit("Metadata & Artist Added.....")
+    else:
+        metadata_mode = False
+
+    duration = await get_duration(file_path if os.path.exists(file_path) else dl_path)
+    ph_path = None
+    c_caption = user_data.get('caption', None)
+    c_thumb = user_data.get('file_id', None)
+    if c_caption:
+         try:
+             caption = c_caption.format(filename=escape(str(new_filename)), filesize=escape(humanbytes(media.file_size)), duration=escape(str(convert(duration))))
+         except Exception as e:
+             if bot.premium and bot.uploadlimit:
+                 await digital_botz.set_used_limit(user_id, int(used))
+             return await rkn_processing.edit(text=f"Caption Error: {escape(str(e))}")             
+    else:
+         caption = f"<b>{escape(str(new_filename))}</b>\n\n<b>User:</b> {escape(str(update.from_user.first_name))}\n<b>User ID:</b> <code>{user_id}</code>"
+         
+    if (media.thumbs or c_thumb):
+         try:
+             if c_thumb:
+                 ph_path = await bot.download_media(c_thumb) 
+             else:
+                 ph_path = await bot.download_media(media.thumbs[0].file_id)
+             if ph_path and os.path.exists(ph_path):
+                 with Image.open(ph_path) as img:
+                     img.convert("RGB").resize((320, 320), Image.Resampling.LANCZOS).save(ph_path, "JPEG")
+         except Exception as e:
+             ph_path = None
+
+    upload_type = update.data.split("#")[1]
+    final_file_path = metadata_path if metadata_mode and os.path.exists(metadata_path) else file_path
+    
+    if media.file_size > 2000 * 1024 * 1024:
+        filw, error = await upload_files(app, Config.LOG_CHANNEL, upload_type, final_file_path, ph_path, caption, duration, rkn_processing)
+        if error:
+            if bot.premium and bot.uploadlimit:
+                await digital_botz.set_used_limit(user_id, int(used))
+            await remove_path(ph_path, file_path, dl_path, metadata_path)
+            return await rkn_processing.edit(f"Upload Error: {escape(str(error))}")
+        from_chat = filw.chat.id
+        mg_id = filw.id
+        if Config.BIN_CHANNEL:
             try:
-                await bot.send_message(chat_id=user_id, text=f"<b>ʜᴇʏ {user.mention},\n\n✨ ʏᴏᴜʀ ᴀᴄᴄᴏᴜɴᴛ ʜᴀs ʙᴇᴇɴ ʀᴇᴍᴏᴠᴇᴅ ᴛᴏ ᴏᴜʀ ᴘʀᴇᴍɪᴜᴍ ᴘʟᴀɴ\n\nᴄʜᴇᴄᴋ ʏᴏᴜʀ ᴘʟᴀɴ ʜᴇʀᴇ /myplan</b>")
+                await bot.copy_message(chat_id=Config.BIN_CHANNEL, from_chat_id=from_chat, message_id=mg_id)
             except Exception:
                 pass
-        else:
-            await message.reply_text("ᴜɴᴀʙʟᴇ ᴛᴏ ʀᴇᴍᴏᴠᴇ ᴘʀᴇᴍɪᴜᴍ ᴜꜱᴇʀ !\nᴀʀᴇ ʏᴏᴜ ꜱᴜʀᴇ, ɪᴛ ᴡᴀꜱ ᴀ ᴘʀᴇᴍɪᴜᴍ ᴜꜱᴇʀ ɪᴅ ?")
+        await asyncio.sleep(2)
+        await bot.copy_message(update.from_user.id, from_chat, mg_id)
+        await bot.delete_messages(from_chat, mg_id)
     else:
-        await message.reply_text("ᴜꜱᴀɢᴇ : /removepremium ᴜꜱᴇʀ ɪᴅ")
-
-@Client.on_message(filters.private & filters.command("restart") & filters.user(ADMINS))
-async def restart_bot(b, m):
-    rkn = await b.send_message(text="<b>🔄 ᴘʀᴏᴄᴇssᴇs sᴛᴏᴘᴘᴇᴅ. ʙᴏᴛ ɪs ʀᴇsᴛᴀʀᴛɪɴɢ.....</b>", chat_id=m.chat.id)
-    os.execl(sys.executable, sys.executable, *sys.argv)
-        
+        filw, error = await upload_files(bot, update.message.chat.id, upload_type, final_file_path, ph_path, caption, duration, rkn_processing)
+        if error:
+            if bot.premium and bot.uploadlimit:
+                await digital_botz.set_used_limit(user_id, int(used))
+            await remove_path(ph_path, file_path, dl_path, metadata_path)
+            return await rkn_processing.edit(f"Upload Error: {escape(str(error))}")
+        if Config.BIN_CHANNEL:
+            try:
+                await bot.copy_message(chat_id=Config.BIN_CHANNEL, from_chat_id=filw.chat.id, message_id=filw.id)
+            except Exception:
+                pass
+                
+    await remove_path(ph_path, file_path, dl_path, metadata_path)
+    return await rkn_processing.edit("Uploaded Successfully....")
