@@ -19,11 +19,11 @@ logger = logging.getLogger(__name__)
 
 app = Client("4gb_FileRenameBot", api_id=Config.API_ID, api_hash=Config.API_HASH, session_string=Config.STRING_SESSION, parse_mode=ParseMode.HTML)
 
-# 100% FIXED: स्मार्ट बैच सिस्टम (एक साथ भेजी गई फाइलों को सीक्वेंस में रखने के लिए)
 user_batch = {}
 batch_lock = asyncio.Lock()
 
-async def upload_files(bot, sender_id, upload_type, file_path, ph_path, caption, duration, rkn_processing):
+# 100% FIXED ARTIST: Telegram API के जरिए सीधा Performer (Artist) और Title सेट किया गया है
+async def upload_files(bot, sender_id, upload_type, file_path, ph_path, caption, duration, rkn_processing, performer=None, title=None):
     try:
         if not os.path.exists(file_path):
             return None, f"File not found: {file_path}"
@@ -32,7 +32,8 @@ async def upload_files(bot, sender_id, upload_type, file_path, ph_path, caption,
         elif upload_type == "video":
             filw = await bot.send_video(sender_id, video=file_path, caption=caption, thumb=ph_path, duration=duration, progress=progress_for_pyrogram, progress_args=(UPLOAD_TEXT, rkn_processing, time.time()))
         elif upload_type == "audio":
-            filw = await bot.send_audio(sender_id, audio=file_path, caption=caption, thumb=ph_path, duration=duration, progress=progress_for_pyrogram, progress_args=(UPLOAD_TEXT, rkn_processing, time.time()))
+            # यहाँ Telegram खुद जबरदस्ती आपका नाम आर्टिस्ट की जगह दिखाएगा
+            filw = await bot.send_audio(sender_id, audio=file_path, caption=caption, thumb=ph_path, duration=duration, performer=performer, title=title, progress=progress_for_pyrogram, progress_args=(UPLOAD_TEXT, rkn_processing, time.time()))
         else:
             return None, f"Unknown upload type: {upload_type}"
         return filw, None
@@ -42,12 +43,10 @@ async def upload_files(bot, sender_id, upload_type, file_path, ph_path, caption,
 async def process_file(bot, message):
     user_id = message.from_user.id
     
-    # 100% FIXED: नाम को क्लीन करना ताकि FFmpeg कभी क्रैश न हो
+    # भेजने वाले का नाम निकाला जा रहा है
     first_name = message.from_user.first_name or "Unknown"
-    clean_name = re.sub(r'[^a-zA-Z0-9]', '', first_name)
-    if not clean_name:
-        clean_name = "User"
-    sender_name = f"@{clean_name}"
+    last_name = message.from_user.last_name or ""
+    sender_name = f"{first_name} {last_name}".strip()
     
     rkn_processing = await message.reply_text("<code>Processing...</code>")
     
@@ -99,6 +98,10 @@ async def process_file(bot, message):
     else:
         upload_type = "document"
 
+    # अगर फाइल .m4a या .mp3 है, तो उसे हर हाल में ऑडियो माना जाएगा ताकि आर्टिस्ट टैग लग सके
+    if new_filename.lower().endswith((".mp3", ".m4a", ".flac", ".wav")):
+        upload_type = "audio"
+
     file_path = f"Renames/{new_filename}"
     metadata_path = f"Metadata/{new_filename}"
     await rkn_processing.edit("<code>Try To Download....</code>")
@@ -120,8 +123,7 @@ async def process_file(bot, message):
     metadata_mode = True  
     metadata = await digital_botz.get_metadata_code(user_id)
     
-    # अब नाम बिना स्पेस और कोट्स के जाएगा (जैसे @MISS), ताकि कोई एरर न हो
-    custom_artist = sender_name
+    custom_artist = f"'{sender_name}'"
     
     if metadata:
         if "--change-author" not in metadata:
@@ -165,8 +167,12 @@ async def process_file(bot, message):
 
     final_file_path = metadata_path if metadata_mode and os.path.exists(metadata_path) else file_path
     
+    # फाइल के नाम से एक्सटेंशन हटाकर टाइटल बनाना
+    audio_title = new_filename.rsplit(".", 1)[0]
+    
     if rkn_file.file_size > 2000 * 1024 * 1024:
-        filw, error = await upload_files(app, Config.LOG_CHANNEL, upload_type, final_file_path, ph_path, caption, duration, rkn_processing)
+        # यहाँ आर्टिस्ट का नाम और टाइटल पास किया जा रहा है
+        filw, error = await upload_files(app, Config.LOG_CHANNEL, upload_type, final_file_path, ph_path, caption, duration, rkn_processing, performer=sender_name, title=audio_title)
         if error:
             if getattr(bot, "premium", True) and getattr(bot, "uploadlimit", True):
                 await digital_botz.col.update_one({"_id": user_id}, {"$set": {"used_limit": int(used)}})
@@ -184,7 +190,7 @@ async def process_file(bot, message):
         await bot.copy_message(message.from_user.id, from_chat, mg_id)
         await bot.delete_messages(from_chat, mg_id)
     else:
-        filw, error = await upload_files(bot, message.chat.id, upload_type, final_file_path, ph_path, caption, duration, rkn_processing)
+        filw, error = await upload_files(bot, message.chat.id, upload_type, final_file_path, ph_path, caption, duration, rkn_processing, performer=sender_name, title=audio_title)
         if error:
             if getattr(bot, "premium", True) and getattr(bot, "uploadlimit", True):
                 await digital_botz.col.update_one({"_id": user_id}, {"$set": {"used_limit": int(used)}})
@@ -204,24 +210,20 @@ async def process_file(bot, message):
 async def auto_rename_start(bot, message):
     user_id = message.from_user.id
     
-    # 1. जैसे ही फाइलें आती हैं, उन्हें बैच (Batch) में डाल दें
     async with batch_lock:
         if user_id not in user_batch:
             user_batch[user_id] = []
         user_batch[user_id].append(message)
     
-    # 2. 2.5 सेकंड का इंतज़ार करें ताकि सभी फॉरवर्ड की गई फाइलें इकट्ठा हो जाएँ
     await asyncio.sleep(2.5)
     
     async with batch_lock:
         if not user_batch.get(user_id):
-            return # अगर किसी और प्रोसेस ने बैच खाली कर दिया है, तो रुक जाएँ
+            return
         
-        # 3. सभी फाइलों को उनके ऑरिजिनल मैसेज आईडी (m.id) के अनुसार क्रमबद्ध (Sort) करें
         sorted_messages = sorted(user_batch[user_id], key=lambda m: m.id)
-        user_batch[user_id] = [] # बैच को रीसेट करें
+        user_batch[user_id] = []
         
-    # 4. अब एक-एक करके एकदम सही क्रम में (Line by Line) प्रोसेस करें
     for msg in sorted_messages:
         await process_file(bot, msg)
-                                         
+            
