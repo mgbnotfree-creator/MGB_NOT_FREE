@@ -43,9 +43,17 @@ async def add_premium(client, message):
         if len(message.command) < 4:
             return await message.reply_text("<b>Usage :</b>\n<code>/givepro user_id Pro 1 month</code>\n<i>or</i>\n<code>/givepro user_id UltraPro 1 month</code>")
         
-        user_id = int(message.command[1])
-        plan_type = message.command[2]
-        if plan_type not in ["Pro", "UltraPro"]:
+        # 100% FIXED: Integer User ID and Case-Insensitive Plan Check
+        user_id = int(message.command[1].strip())
+        plan_type_input = message.command[2].lower().strip()
+        
+        if plan_type_input == "pro":
+            limit = 50  # Pro: 50 files per day
+            p_type = "Pro"
+        elif plan_type_input in ["ultrapro", "ultra"]:
+            limit = 100 # UltraPro: 100 files per day
+            p_type = "UltraPro"
+        else:
             return await message.reply_text("❌ Invalid Plan Type. Please use <code>Pro</code> or <code>UltraPro</code>.")
         
         time_string = " ".join(message.command[3:])
@@ -57,13 +65,6 @@ async def add_premium(client, message):
             mention = user.mention
         except Exception:
             mention = f"User {user_id}"
-        
-        if plan_type == "Pro":
-            limit = 50  # Pro: 50 files per day
-            p_type = "Pro"
-        elif plan_type == "UltraPro":
-            limit = 100 # UltraPro: 100 files per day
-            p_type = "UltraPro"
 
         seconds = await get_seconds(time_string)
         if seconds <= 0:
@@ -116,18 +117,19 @@ async def add_premium(client, message):
 @Client.on_message(filters.command("removepremium") & filters.user(ADMINS))
 async def remove_premium(bot, message):
     if len(message.command) == 2:
-        user_id = int(message.command[1])
+        user_id = int(message.command[1].strip())
         try:
             user = await bot.get_users(user_id)
             mention = user.mention
         except Exception:
             mention = f"User {user_id}"
         
+        # FIXED: remove premium par free limit (5) set ki gai hai taaki user block na ho
         await digital_botz.col.update_one(
             {"_id": user_id},
             {"$set": {
                 "expiry_time": None,
-                "uploadlimit": 0,
+                "uploadlimit": 5, 
                 "usertype": "Free"
             }}
         )
@@ -144,4 +146,4 @@ async def remove_premium(bot, message):
 async def restart_bot(b, m):
     rkn = await b.send_message(text="<b>🔄 ᴘʀᴏᴄᴇssᴇs sᴛᴏᴘᴘᴇᴅ. ʙᴏᴛ ɪs ʀᴇsᴛᴀʀᴛɪɴɢ.....</b>", chat_id=m.chat.id)
     os.execl(sys.executable, sys.executable, *sys.argv)
-     
+ 
