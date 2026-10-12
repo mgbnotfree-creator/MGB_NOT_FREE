@@ -48,7 +48,7 @@ async def start(client, message):
 @Client.on_message(filters.private & filters.command('setprefix'))
 async def add_prefix(client, message):
     if len(message.command) == 1:
-        return await message.reply_text("<b><i>Give The Prefix</i>\n\nExᴀᴍᴩʟᴇ:- <code>/setprefix @TechifyBots</code></b>")
+        return await message.reply_text("<b><i>Give The Prefix</i>\n\nExᴀᴍᴩʟᴇ:- <code>/setprefix @mgbnotfree_creator</code></b>")
     prefix = message.text.split(" ", 1)[1]
     RknDev = await message.reply_text("Please Wait ...")
     await digital_botz.set_prefix(message.from_user.id, prefix)
@@ -75,7 +75,7 @@ async def see_prefix(client, message):
 @Client.on_message(filters.private & filters.command('setsuffix'))
 async def add_suffix(client, message):
     if len(message.command) == 1:
-        return await message.reply_text("<b><i>Give The Suffix</i>\n\nExᴀᴍᴩʟᴇ:- <code>/setsuffix @TechifyBots</code></b>")
+        return await message.reply_text("<b><i>Give The Suffix</i>\n\nExᴀᴍᴩʟᴇ:- <code>/setsuffix @mgbnotfree_creator</code></b>")
     suffix = message.text.split(" ", 1)[1]
     RknDev = await message.reply_text("Please Wait ...")
     await digital_botz.set_suffix(message.from_user.id, suffix)
@@ -103,7 +103,7 @@ async def see_suffix(client, message):
 async def add_caption(client, message):
     rkn = await message.reply_text("<b><i>ᴘʟᴇᴀsᴇ ᴡᴀɪᴛ</i></b>")
     if len(message.command) == 1:
-       return await rkn.edit("<b><i>Gɪᴠᴇ Tʜᴇ Cᴀᴩᴛɪᴏɴ</i>\n\nExᴀᴍᴩʟᴇ:- <code>/setcaption {filename}\n\n💾 Sɪᴢᴇ: {filesize}\n\n⏰ Dᴜʀᴀᴛɪᴏɴ: {duration}</code>\n<b>By: @TechifyBots</b>")
+       return await rkn.edit("<b><i>Gɪᴠᴇ Tʜᴇ Cᴀᴩᴛɪᴏɴ</i>\n\nExᴀᴍᴩʟᴇ:- <code>/setcaption {filename}\n\n💾 Sɪᴢᴇ: {filesize}\n\n⏰ Dᴜʀᴀᴛɪᴏɴ: {duration}</code>\n<b>By: @mgbnotfree_creator</b>")
     caption = message.text.split(" ", 1)[1]
     await digital_botz.set_caption(message.from_user.id, caption=caption)
     await rkn.edit("<b><i>✅ Cᴀᴩᴛɪᴏɴ Sᴀᴠᴇᴅ</i></b>")
@@ -155,10 +155,9 @@ async def addthumbs(client, message):
 @Client.on_message(filters.private & filters.command("myplan"))
 async def myplan(client, message):
     if not client.premium:
-        return # premium mode disabled ✓
+        return 
     user_id = message.from_user.id
     user = message.from_user.mention
-    # one premium read for both the access verdict and the expiry display
     premium = await digital_botz.premium_state(user_id)
     if premium["has_premium_access"]:
         data = await digital_botz.get_user(user_id)
@@ -193,7 +192,7 @@ async def myplan(client, message):
 @Client.on_message(filters.private & filters.command("plans"))
 async def plans(client, message):
     if not client.premium:
-        return # premium mode disabled ✓
+        return 
     text, markup = await upgrade_view(client, message.from_user)
     await message.reply_text(text=text, reply_markup=markup, link_preview_options=LinkPreviewOptions(is_disabled=True))
 
@@ -201,11 +200,9 @@ async def plans(client, message):
 async def cb_handler(client, query: CallbackQuery):
     data = query.data
     try:
-        # Answer first: Telegram keeps the tapped button spinning until this lands,
-        # and the branches below can take seconds (photo edit, live speed test).
         await query.answer()
     except Exception:
-        pass  # shortcut: stale/duplicate taps raise QUERY_ID_INVALID; handler still runs
+        pass 
     if data == "start":
         start_button = [[
         InlineKeyboardButton('ᴀʙᴏᴜᴛ', callback_data='about', style=ButtonStyle.PRIMARY),
@@ -223,7 +220,6 @@ async def cb_handler(client, query: CallbackQuery):
             text=rkn.HELP_TXT,
             link_preview_options=LinkPreviewOptions(is_disabled=True),
             reply_markup=InlineKeyboardMarkup([[
-                #⚠️ don't change source code & source link ⚠️ #
                 InlineKeyboardButton("ᴛʜᴜᴍʙɴᴀɪʟ", callback_data = "thumbnail", style=ButtonStyle.PRIMARY),
                 InlineKeyboardButton("ᴄᴀᴘᴛɪᴏɴ", callback_data = "caption", style=ButtonStyle.PRIMARY)
                 ],[
@@ -235,8 +231,8 @@ async def cb_handler(client, query: CallbackQuery):
         
     elif data == "about":
         about_button = [[
-         #⚠️ don't change source code & source link ⚠️ #
-        InlineKeyboardButton("sᴏᴜʀᴄᴇ", callback_data = "source_code", style=ButtonStyle.PRIMARY), #Whoever is deploying this repo is given a warning ⚠️ not to remove this repo link #first & last warning ⚠️
+        # 100% FIXED: 'SOURCE' Changed to 'UPDATES' 
+        InlineKeyboardButton("💞 ᴜᴘᴅᴀᴛᴇꜱ 💞", callback_data = "source_code", style=ButtonStyle.PRIMARY),
         InlineKeyboardButton("ʙᴏᴛ sᴛᴀᴛᴜs", callback_data = "bot_status", style=ButtonStyle.PRIMARY)
         ],[
         InlineKeyboardButton("ʟɪᴠᴇ sᴛᴀᴛᴜs", callback_data = "live_status", style=ButtonStyle.PRIMARY)           
@@ -305,7 +301,6 @@ async def cb_handler(client, query: CallbackQuery):
         uptime = time.strftime("%Hh%Mm%Ss", time.gmtime(time.time() - client.uptime))
         sent = humanbytes(psutil.net_io_counters().bytes_sent)
         recv = humanbytes(psutil.net_io_counters().bytes_recv)
-        # First call may run a real Ookla test (up to ~2 min); then cached 10 min.
         speed_label = await network_speed_label()
         await query.message.edit_text(
             text=rkn.BOT_STATUS.format(uptime, total_users, total_premium_users, speed_label, sent, recv),
@@ -314,8 +309,6 @@ async def cb_handler(client, query: CallbackQuery):
              InlineKeyboardButton("ʙᴀᴄᴋ", callback_data = "about", style=ButtonStyle.PRIMARY)]]))
 
     elif data == "live_status":
-        # Same numbers as the web dashboard, so both share its caching and
-        # its thread offload for the CPU sample.
         status = await get_status()
         speed_label = await network_speed_label()
         await query.message.edit_text(
@@ -329,7 +322,8 @@ async def cb_handler(client, query: CallbackQuery):
             text=rkn.DEV_TXT,
             link_preview_options=LinkPreviewOptions(is_disabled=True),
             reply_markup=InlineKeyboardMarkup([[
-                InlineKeyboardButton("💞 sᴏᴜʀᴄᴇ ᴄᴏᴅᴇ 💞", url="https://github.com/TechifyBots/Rename-Bot", style=ButtonStyle.PRIMARY)
+                # 100% FIXED: Changed to your styling & your URL
+                InlineKeyboardButton("🖤 ᴍ ɢ ʙ   ᴄ ᴏ ᴅ ᴇ ʀ 🖤", url="https://t.me/mgbnotfree_creator", style=ButtonStyle.PRIMARY)
             ],[
                 InlineKeyboardButton("ᴄʟᴏꜱᴇ", callback_data = "close", style=ButtonStyle.DANGER),
                 InlineKeyboardButton("ʙᴀᴄᴋ", callback_data = "about", style=ButtonStyle.PRIMARY)
@@ -337,9 +331,6 @@ async def cb_handler(client, query: CallbackQuery):
         )
 
     elif data == "close":
-        # Grab the parent before deleting anything: a missing parent (the user removed
-        # their /start command) must not abort the close, and deleting an already
-        # deleted message is what Telegram answers with MESSAGE_ID_INVALID.
         parent = query.message.reply_to_message
         for target in (query.message, parent):
             if target is None:
@@ -349,3 +340,4 @@ async def cb_handler(client, query: CallbackQuery):
             except Exception:
                 pass
         await query.message.continue_propagation()
+	
