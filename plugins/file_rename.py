@@ -8,7 +8,7 @@ from helper.utils import progress_for_pyrogram, convert, humanbytes, add_prefix_
 from helper.database import digital_botz
 from helper.ffmpeg import change_metadata, get_duration
 from config import Config, rkn
-import os, time, asyncio, re
+import os, time, asyncio, re, datetime
 from html import escape
 import logging
 
@@ -32,7 +32,6 @@ async def upload_files(bot, sender_id, upload_type, file_path, ph_path, caption,
         elif upload_type == "video":
             filw = await bot.send_video(sender_id, video=file_path, caption=caption, thumb=ph_path, duration=duration, progress=progress_for_pyrogram, progress_args=(UPLOAD_TEXT, rkn_processing, time.time()))
         elif upload_type == "audio":
-            # यहाँ Telegram खुद जबरदस्ती आपका नाम आर्टिस्ट की जगह दिखाएगा
             filw = await bot.send_audio(sender_id, audio=file_path, caption=caption, thumb=ph_path, duration=duration, performer=performer, title=title, progress=progress_for_pyrogram, progress_args=(UPLOAD_TEXT, rkn_processing, time.time()))
         else:
             return None, f"Unknown upload type: {upload_type}"
@@ -43,20 +42,27 @@ async def upload_files(bot, sender_id, upload_type, file_path, ph_path, caption,
 async def process_file(bot, message):
     user_id = message.from_user.id
     
-    # भेजने वाले का नाम निकाला जा रहा है
     first_name = message.from_user.first_name or "Unknown"
     last_name = message.from_user.last_name or ""
     sender_name = f"{first_name} {last_name}".strip()
     
     rkn_processing = await message.reply_text("<code>Processing...</code>")
     
-    # --- DAILY FILE COUNT LIMIT CHECK ---
+    # --- 100% FIXED: DAILY FILE COUNT & NEXT DAY RESET LIMIT CHECK ---
     user_data = await digital_botz.get_user_data(user_id)
     if getattr(bot, "premium", True) and getattr(bot, "uploadlimit", True):
         is_premium = await digital_botz.has_premium_access(user_id)
         
         max_limit = user_data.get('uploadlimit', 50) if is_premium else 5
         used = user_data.get('used_limit', 0) if user_data else 0
+        
+        # NEXT DAY RESET LOGIC (रात 12 बजे के बाद अपने आप लिमिट 0 हो जाएगी)
+        last_date = user_data.get('last_upload_date', None) if user_data else None
+        current_date = datetime.date.today().isoformat()
+        
+        if last_date != current_date:
+            used = 0
+            await digital_botz.col.update_one({"_id": user_id}, {"$set": {"used_limit": 0, "last_upload_date": current_date}})
         
         if used > 5000:
             used = 0
@@ -77,7 +83,6 @@ async def process_file(bot, message):
     if not os.path.isdir("Metadata"):
         os.mkdir("Metadata")
 
-    # --- DETERMINE FILE NAME & PREFIX/SUFFIX ---
     rkn_file = getattr(message, message.media.value)
     filename = getattr(rkn_file, "file_name", "file.mkv")
     new_name = filename.replace("\\", "/").split("/")[-1]
@@ -90,7 +95,6 @@ async def process_file(bot, message):
         await rkn_processing.edit(f"⚠️ Error in Prefix/Suffix: {escape(str(e))}")
         return
 
-    # --- AUTO DETECT UPLOAD TYPE ---
     if message.media == MessageMediaType.VIDEO:
         upload_type = "video"
     elif message.media == MessageMediaType.AUDIO:
@@ -98,7 +102,6 @@ async def process_file(bot, message):
     else:
         upload_type = "document"
 
-    # अगर फाइल .m4a या .mp3 है, तो उसे हर हाल में ऑडियो माना जाएगा ताकि आर्टिस्ट टैग लग सके
     if new_filename.lower().endswith((".mp3", ".m4a", ".flac", ".wav")):
         upload_type = "audio"
 
@@ -119,7 +122,6 @@ async def process_file(bot, message):
         await rkn_processing.edit(f"Download Error: {escape(str(e))}")
         return
 
-    # --- AUTO ARTIST / METADATA INJECTION ---
     metadata_mode = True  
     metadata = await digital_botz.get_metadata_code(user_id)
     
@@ -166,12 +168,9 @@ async def process_file(bot, message):
              ph_path = None
 
     final_file_path = metadata_path if metadata_mode and os.path.exists(metadata_path) else file_path
-    
-    # फाइल के नाम से एक्सटेंशन हटाकर टाइटल बनाना
     audio_title = new_filename.rsplit(".", 1)[0]
     
     if rkn_file.file_size > 2000 * 1024 * 1024:
-        # यहाँ आर्टिस्ट का नाम और टाइटल पास किया जा रहा है
         filw, error = await upload_files(app, Config.LOG_CHANNEL, upload_type, final_file_path, ph_path, caption, duration, rkn_processing, performer=sender_name, title=audio_title)
         if error:
             if getattr(bot, "premium", True) and getattr(bot, "uploadlimit", True):
@@ -226,4 +225,3 @@ async def auto_rename_start(bot, message):
         
     for msg in sorted_messages:
         await process_file(bot, msg)
-            
