@@ -27,7 +27,7 @@ class Config(object):
     # logging - canonical log path for setup and the /logs command
     LOG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "BotLog.txt")
  
-    # other configs (Updated with your new image link)
+    # other configs
     PIC = os.environ.get("PIC", "https://i.postimg.cc/bYG60SRD/1790717064167.png")
     ADMIN = _int_env("ADMIN", 0)
     LOG_CHANNEL = _int_env("LOG_CHANNEL", 0)
@@ -50,6 +50,7 @@ class Config(object):
     PORT = int(os.environ.get("PORT", "8080"))
     BOT_UPTIME = time.time()
 
+
 class rkn(object):
     # part of text configuration
     START_TXT = """<b>{},</b>
@@ -60,16 +61,17 @@ class rkn(object):
 
 𝖳𝖺𝗉 𝖧𝖾𝗅𝗉 𝖳𝗈 𝖤𝗑𝗉𝗅𝗈𝗋𝖾 𝖠𝗅𝗅 𝖥𝖾𝖺𝗍𝗎𝗋𝖾𝗌
 
-<blockquote><b>‣ 𝖬𝖺𝗂𝗇𝗍𝖺𝗂𝗇𝖾𝖽 𝖡𝗒: <a href='https://t.me/MGB_CODER'>⌜ ʀ ɪ ʏ ʌ 𝒙 ᴍ ᴜ s ɪ ᴄ ⌟ ♪</a></b></blockquote>"""
+<blockquote><b>‣ 𝖬𝖺𝗂𝗇𝗍𝖺𝗂𝗇𝖾𝖽 𝖡𝗒: <a href='https://t.me/mgbnotfree_creator'>🖤 S ʜ ɪ ᴢ ᴜ   ᴍ ɢ ʙ   ᴄ ᴏ ᴅ ᴇ ʀ ࿐</a></b></blockquote>"""
 
+    # 100% FIXED: Smart Indexing से TechifyBots को बाईपास कर दिया गया है
     ABOUT_TXT = """<b>╭───────────⍟
-├ 🤖 𝖭𝖺𝗆𝖾 : {}
-├ 🖥️ 𝖣𝖾𝗏𝖾𝗅𝗈𝗉𝖾𝗋𝗌 : {}
-├ 👨‍💻 𝖯𝗋𝗈𝗀𝗋𝖺𝗆𝗆𝖾𝗋 : {}
-├ 📕 𝖫𝗂𝖻𝗋𝖺𝗋𝗒 : {}
-├ ✏️ 𝖫𝖺𝗇𝗀𝗎𝖺𝗀𝖾 : {}
-├ 💾 𝖣𝖺𝗍𝖺𝖻𝖺𝗌𝖾 : {}
-├ 📊 𝖵𝖾𝗋𝗌𝗂𝗈𝗇 : <a href=https://github.com/TechifyBots/Rename-Bot>{}</a>
+├ 🤖 𝖭𝖺𝗆𝖾 : {0}
+├ 🖥️ 𝖣𝖾𝗏𝖾𝗅𝗈𝗉𝖾𝗋𝗌 : <a href='https://t.me/mgbnotfree_creator'>🖤 S ʜ ɪ ᴢ ᴜ   ᴍ ɢ ʙ   ᴄ ᴏ ᴅ ᴇ ʀ ࿐</a>
+├ 👨‍💻 𝖯𝗋𝗈𝗀𝗋𝖺𝗆𝗆𝖾𝗋 : <a href='https://t.me/mgbnotfree_creator'>🖤 S ʜ ɪ ᴢ ᴜ   ᴍ ɢ ʙ   ᴄ ᴏ ᴅ ᴇ ʀ ࿐</a>
+├ 📕 𝖫𝗂𝖻𝗋𝖺𝗋𝗒 : {3}
+├ ✏️ 𝖫𝖺𝗇𝗀𝗎𝖺𝗀𝖾 : {4}
+├ 💾 𝖣𝖺𝗍𝖺𝖻𝖺𝗌𝖾 : {5}
+├ 📊 𝖵𝖾𝗋𝗌𝗂𝗈𝗇 : <a href='https://t.me/mgbnotfree_creator'>{6}</a>
 ╰───────────────⍟</b>"""
 
     HELP_TXT = """✏️ <b><u>𝖧𝗈𝗐 𝖳𝗈 𝖱𝖾𝗇𝖺𝗆𝖾 𝖠 𝖥𝗂𝗅𝖾</u></b>
@@ -77,7 +79,7 @@ class rkn(object):
 <b>•></b> 𝖲𝖾𝗇𝖽 𝖠𝗇𝗒 𝖥𝗂𝗅𝖾 𝖠𝗇𝖽 𝖤𝗇𝗍𝖾𝗋 𝖳𝗁𝖾 𝖭𝖾𝗐 𝖥𝗂𝗅𝖾 𝖭𝖺𝗆𝖾.
 𝖳𝗁𝖾𝗇 𝖲𝖾𝗅𝖾𝖼𝗍 𝖳𝗁𝖾 𝖱𝖾𝗊𝗎𝗂𝗋𝖾𝖽 𝖥𝗈𝗋𝗆𝖺𝗍 [ 𝖣𝗈𝖼𝗎𝗆𝖾𝗇𝗍, 𝖵𝗂𝖽𝖾𝗈, 𝖠𝗎𝖽𝗂𝗈 ].
 
-ℹ️ 𝖥𝗈𝗋 𝖠𝗇𝗒 𝖮𝗍𝗁𝖾𝗋 𝖧𝖾𝗅𝗉, 𝖢𝗈𝗇𝗍𝖺𝗀𝗍 𝖮𝗎𝗋 <a href=https://t.me/TechifySupport>𝖲𝖴𝖯𝖯𝖮𝖱𝖳 𝖦𝖱𝖮𝖴𝖯</a>"""
+ℹ️ 𝖥𝗈𝗋 𝖠𝗇𝗒 𝖮𝗍𝗁𝖾𝗋 𝖧𝖾𝗅𝗉, 𝖢𝗈𝗇𝗍𝖺𝗀𝗍 𝖮𝗎𝗋 <a href='https://t.me/mgbnotfree_creator'>𝖲𝖴𝖯𝖯𝖮𝖱𝖳 𝖦𝖱𝖮𝖴𝖯</a>"""
 
     UPGRADE_PREMIUM = """
 •⪼ ★ 𝖯𝗅𝖺𝗇𝗌    -  ⏳ 𝖣𝗎𝗋𝖺𝗍𝗂𝗈𝗇 - 💸 𝖯𝗋𝗂𝖼𝖾
@@ -150,11 +152,11 @@ class rkn(object):
 
     SEND_METADATA = """<b>📝 𝖲𝖾𝗇𝖽 𝖸𝗈𝗎𝗋 𝖢𝗎𝗌𝗍𝗈𝗆 𝖬𝖾𝗍𝖺𝖽𝖺𝗍𝖺 𝖢𝗈𝖽𝖾</b>
 
-<code>--change-title @TechifyBots
---change-video-title @TechifyBots
---change-audio-title @TechifyBots
---change-subtitle-title @TechifyBots
---change-author @TechifyBots</code>
+<code>--change-title "🖤 S ʜ ɪ ᴢ ᴜ   ᴍ ɢ ʙ   ᴄ ᴏ ᴅ ᴇ ʀ ࿐"
+--change-video-title "🖤 S ʜ ɪ ᴢ ᴜ   ᴍ ɢ ʙ   ᴄ ᴏ ᴅ ᴇ ʀ ࿐"
+--change-audio-title "🖤 S ʜ ɪ ᴢ ᴜ   ᴍ ɢ ʙ   ᴄ ᴏ ᴅ ᴇ ʀ ࿐"
+--change-subtitle-title "🖤 S ʜ ɪ ᴢ ᴜ   ᴍ ɢ ʙ   ᴄ ᴏ ᴅ ᴇ ʀ ࿐"
+--change-author "🖤 S ʜ ɪ ᴢ ᴜ   ᴍ ɢ ʙ   ᴄ ᴏ ᴅ ᴇ ʀ ࿐"</code>
 
 𝖱𝖾𝗉𝗅𝗒 𝗍𝗈 𝗍𝗁𝗂𝗌 𝗆𝖾𝗌𝗌𝖺𝗀𝖾 𝗐𝗂𝗍𝗁 𝗒𝗈𝗎𝗋 𝖼𝗈𝖽𝖾 (𝗍𝖾𝗑𝗍 𝗈𝗇𝗅𝗒)."""
     
@@ -169,17 +171,15 @@ class rkn(object):
 ➢ /seesuffix - 𝖴𝗌𝖾 𝖳𝗁𝗂𝗌 𝖢𝗈𝗆𝗆𝖺𝗇𝖽 𝖳𝗈 𝖵𝗂𝖾𝗲 𝖸𝗈𝗎𝗋 𝖲𝗎𝖿𝖿𝗂𝗑.
 ➢ /delsuffix - 𝖴𝗌𝖾 𝖳𝗁𝗂𝗌 𝖢𝗈𝗆𝗆𝖺𝗇𝖽 𝖳𝗈 𝖣𝖾𝗅𝖾𝗍𝖾 𝖸𝗈𝗎𝗋 𝖲𝗎𝖿𝖿𝗂𝗑.
 
-𝖤𝗑𝖺𝗆𝗉𝗅𝖾: <code>/setsuffix @TechifyBots</code>
-𝖤𝗑𝖺𝗆𝗉𝗅𝖾: <code>/setprefix @TechifyBots</code>"""
+𝖤𝗑𝖺𝗆𝗉𝗅𝖾: <code>/setsuffix @mgbnotfree_creator</code>
+𝖤𝗑𝖺𝗆𝗉𝗅𝖾: <code>/setprefix @mgbnotfree_creator</code>"""
 
     DEV_TXT = """<b><u>𝖲𝗉𝖾𝖼𝗂𝖺𝗅 𝖳𝗁𝖺𝗇𝗄𝗌 & 𝖣𝖾𝗏𝖾𝗅𝗈𝗉𝖾𝗋𝗌</u></b>
 
-» 𝖲𝗈𝗎𝗋𝖢𝖾 𝖢𝗈𝖽𝖾 : <a href=https://github.com/TechifyBots/Rename-Bot>𝖱𝖾𝗇𝖺𝗆𝖾-𝖡𝗈𝗍</a>
+» 𝖲𝗈𝗎𝗋𝖢𝖾 𝖢𝗈𝖽𝖾 : <a href='https://github.com/mgbnotfree-creator/MGB_NOT_FREE'>𝖱𝖾𝗇𝖺𝗆𝖾-𝖡𝗈𝗍</a>
 
-• ❣️ <a href=https://github.com/RknDeveloper>𝖱𝗄𝗇𝖣𝖾𝗏𝖾𝗅𝗈𝗉𝖾𝗋</a>
-• ❣️ <a href=https://github.com/DigitalBotz>𝖣𝗂𝗀𝗂𝗍𝖺𝗅𝖡𝗈𝗍𝗓</a>
-• ❣️ <a href=https://github.com/TechifyBots>𝖳𝖾𝖼𝗁𝗂𝖿𝗒𝖡𝗈𝗍𝗌</a>"""
-    
+• ❣️ <a href='https://t.me/mgbnotfree_creator'>🖤 S ʜ ɪ ᴢ ᴜ   ᴍ ɢ ʙ   ᴄ ᴏ ᴅ ᴇ ʀ ࿐</a>"""
+
     PROGRESS = """<b>
 ╭━━━━━━━━◉🚀◉━━━━━━━━╮
 ┃   𝗣𝗥𝗢𝗖𝗘𝗦𝗦𝗜𝗡𝗚...❱━➣  
