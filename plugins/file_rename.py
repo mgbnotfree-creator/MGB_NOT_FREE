@@ -51,10 +51,16 @@ async def process_file(bot, message):
     # --- 100% FIXED: DAILY FILE COUNT & NEXT DAY RESET LIMIT CHECK ---
     user_data = await digital_botz.get_user_data(user_id)
     if getattr(bot, "premium", True) and getattr(bot, "uploadlimit", True):
-        is_premium = await digital_botz.has_premium_access(user_id)
+        db_premium = await digital_botz.has_premium_access(user_id)
         
-        max_limit = user_data.get('uploadlimit', 50) if is_premium else 5
-        used = user_data.get('used_limit', 0) if user_data else 0
+        user_plan = user_data.get('usertype', 'Free') if user_data else 'Free'
+        db_limit = int(user_data.get('uploadlimit', 5)) if user_data else 5
+        
+        # Smart Check: Agar database me Plan 'Pro' hai ya limit 5 se zyada hai, toh Premium manega
+        is_premium = db_premium or (str(user_plan).lower() not in ['free', 'none', '']) or (db_limit > 5)
+        
+        max_limit = (db_limit if db_limit > 5 else 50) if is_premium else 5
+        used = int(user_data.get('used_limit', 0)) if user_data else 0
         
         # NEXT DAY RESET LOGIC (रात 12 बजे के बाद अपने आप लिमिट 0 हो जाएगी)
         last_date = user_data.get('last_upload_date', None) if user_data else None
@@ -69,7 +75,7 @@ async def process_file(bot, message):
             await digital_botz.col.update_one({"_id": user_id}, {"$set": {"used_limit": 0}})
         
         if used >= max_limit:
-            plan_type = user_data.get('usertype', 'Paid') if is_premium else 'Free'
+            plan_type = user_plan if (is_premium and str(user_plan).lower() != 'free') else ('Paid' if is_premium else 'Free')
             await rkn_processing.delete()
             await message.reply_text(
                 f"❌ <b>Dᴀɪʟʏ Uᴘʟᴏᴀᴅ Lɪᴍɪᴛ Rᴇᴀᴄʜᴇᴅ!</b>\n\n"
@@ -225,3 +231,4 @@ async def auto_rename_start(bot, message):
         
     for msg in sorted_messages:
         await process_file(bot, msg)
+                                                                                                                                                         
