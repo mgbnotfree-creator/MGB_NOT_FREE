@@ -26,7 +26,13 @@ upgrade_trial_button = InlineKeyboardMarkup([[
 async def upgrade_view(client, user):
     text = rkn.UPGRADE_PLAN.format(user.mention) if client.uploadlimit else rkn.UPGRADE_PREMIUM.format(user.mention)
     premium = await digital_botz.premium_state(user.id)
-    if not premium["has_premium_access"] and not premium["has_free_trial"]:
+    user_data = await digital_botz.get_user_data(user.id)
+    
+    user_plan = user_data.get('usertype', 'Free') if user_data else 'Free'
+    db_limit = int(user_data.get('uploadlimit', 5)) if user_data else 5
+    is_premium = premium["has_premium_access"] or (str(user_plan).lower() not in ['free', 'none', '']) or (db_limit > 5)
+    
+    if not is_premium and not premium["has_free_trial"]:
         return text, upgrade_trial_button
     return text, upgrade_button
 
@@ -168,40 +174,68 @@ async def addthumbs(client, message):
     await digital_botz.set_thumbnail(message.from_user.id, file_id=message.photo.file_id)                
     await rkn.edit("✅️ <b><i>Tʜᴜᴍʙɴᴀɪʟ Sᴀᴠᴇᴅ</i></b>")
 
+# --- 100% FIXED: /myplan COMMAND (FILES COUNT & SMART PREMIUM CHECK) ---
 @Client.on_message(filters.private & filters.command("myplan"))
 async def myplan(client, message):
     if not client.premium:
         return 
     user_id = message.from_user.id
     user = message.from_user.mention
+    
     premium = await digital_botz.premium_state(user_id)
-    if premium["has_premium_access"]:
+    user_data = await digital_botz.get_user_data(user_id)
+    
+    user_plan = user_data.get('usertype', 'Free') if user_data else 'Free'
+    db_limit = int(user_data.get('uploadlimit', 5)) if user_data else 5
+    used = int(user_data.get('used_limit', 0)) if user_data else 0
+    
+    # Smart Premium Check
+    is_premium = premium["has_premium_access"] or (str(user_plan).lower() not in ['free', 'none', '']) or (db_limit > 5)
+    
+    if is_premium:
         data = await digital_botz.get_user(user_id)
-        expiry_str_in_ist = data.get("expiry_time")
-        time_left_str = expiry_str_in_ist - datetime.datetime.now()
-        text = f"ᴜꜱᴇʀ :- {user}\nᴜꜱᴇʀ ɪᴅ :- <code>{user_id}</code>\n"
+        expiry_str_in_ist = data.get("expiry_time") if data else None
+        
+        max_limit = db_limit if db_limit > 5 else 50
+        remain = max(0, max_limit - used)
+        plan_name = user_plan if str(user_plan).lower() not in ['free', 'none', ''] else 'Pro'
+        
+        text = f"<b>ᴜꜱᴇʀ :-</b> {user}\n<b>ᴜꜱᴇʀ ɪᴅ :-</b> <code>{user_id}</code>\n"
         if client.uploadlimit:
-            user_data = await digital_botz.reset_uploadlimit_access(user_id)
-            limit = user_data.get('uploadlimit', 0)
-            used = user_data.get('used_limit', 0)
-            remain = int(limit) - int(used)
-            type = user_data.get('usertype', "Free")
-            text += f"ᴘʟᴀɴ :- <code>{escape(str(type))}</code>\nᴅᴀɪʟʏ ᴜᴘʟᴏᴀᴅ ʟɪᴍɪᴛ :- <code>{humanbytes(limit)}</code>\nᴛᴏᴅᴀʏ ᴜsᴇᴅ :- <code>{humanbytes(used)}</code>\nʀᴇᴍᴀɪɴ :- <code>{humanbytes(remain)}</code>\n"
-        text += f"ᴛɪᴍᴇ ʟᴇꜰᴛ : {time_left_str}\nᴇxᴘɪʀʏ ᴅᴀᴛᴇ : {expiry_str_in_ist}"
+            text += (
+                f"<b>ᴘʟᴀɴ :-</b> <code>{escape(str(plan_name))}</code>\n"
+                f"<b>ᴅᴀɪʟʏ ᴜᴘʟᴏᴀᴅ ʟɪᴍɪᴛ :-</b> <code>{max_limit} Files/Day</code>\n"
+                f"<b>ᴛᴏᴅᴀʏ ᴜsᴇᴅ :-</b> <code>{used} Files</code>\n"
+                f"<b>ʀᴇᴍᴀɪɴ :-</b> <code>{remain} Files</code>\n"
+            )
+        if expiry_str_in_ist and isinstance(expiry_str_in_ist, datetime.datetime):
+            time_left_str = expiry_str_in_ist - datetime.datetime.now()
+            text += f"<b>ᴛɪᴍᴇ ʟᴇꜰᴛ :-</b> <code>{str(time_left_str).split('.')[0]}</code>\n<b>ᴇxᴘɪʀʏ ᴅᴀᴛᴇ :-</b> <code>{expiry_str_in_ist.strftime('%d-%m-%Y %I:%M:%S %p')}</code>"
+        else:
+            text += "<b>ᴇxᴘɪʀʏ ᴅᴀᴛᴇ :-</b> <code>Active Plan</code>"
+            
         await message.reply_text(text)
     else:
         if client.uploadlimit:
-            user_data = await digital_botz.get_user_data(user_id)
-            limit = user_data.get('uploadlimit', 0)
-            used = user_data.get('used_limit', 0)
-            remain = int(limit) - int(used)
-            type = user_data.get('usertype', "Free")
-            text = f"ᴜꜱᴇʀ :- {user}\nᴜꜱᴇʀ ɪᴅ :- <code>{user_id}</code>\nᴘʟᴀɴ :- <code>{escape(str(type))}</code>\nᴅᴀɪʟʏ ᴜᴘʟᴏᴀᴅ ʟɪᴍɪᴛ :- <code>{humanbytes(limit)}</code>\nᴛᴏᴅᴀʏ ᴜsᴇᴅ :- <code>{humanbytes(used)}</code>\nʀᴇᴍᴀɪɴ :- <code>{humanbytes(remain)}</code>\nᴇxᴘɪʀᴇᴅ ᴅᴀᴛᴇ :- ʟɪғᴇᴛɪᴍᴇ\n\nɪꜰ ʏᴏᴜ ᴡᴀɴᴛ ᴛᴏ ᴛᴀᴋᴇ ᴘʀᴇᴍɪᴜᴍ ᴛʜᴇɴ ᴄʟɪᴄᴋ ᴏɴ ʙᴇʟᴏᴡ ʙᴜᴛᴛᴏɴ 👇"
+            max_limit = 5
+            remain = max(0, max_limit - used)
+            text = (
+                f"<b>ᴜꜱᴇʀ :-</b> {user}\n"
+                f"<b>ᴜꜱᴇʀ ɪᴅ :-</b> <code>{user_id}</code>\n"
+                f"<b>ᴘʟᴀɴ :-</b> <code>Free</code>\n"
+                f"<b>ᴅᴀɪʟʏ ᴜᴘʟᴏᴀᴅ ʟɪᴍɪᴛ :-</b> <code>{max_limit} Files/Day</code>\n"
+                f"<b>ᴛᴏᴅᴀʏ ᴜsᴇᴅ :-</b> <code>{used} Files</code>\n"
+                f"<b>ʀᴇᴍᴀɪɴ :-</b> <code>{remain} Files</code>\n"
+                f"<b>ᴇxᴘɪʀᴇᴅ ᴅᴀᴛᴇ :-</b> <code>ʟɪғᴇᴛɪᴍᴇ</code>\n\n"
+                f"ɪꜰ ʏᴏᴜ ᴡᴀɴᴛ ᴛᴏ ᴛᴀᴋᴇ ᴘʀᴇᴍɪᴜᴍ ᴛʜᴇɴ ᴄʟɪᴄᴋ ᴏɴ ʙᴇʟᴏᴡ ʙᴜᴛᴛᴏɴ 👇"
+            )
             await message.reply_text(text, reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("💸 ᴄʜᴇᴄᴋᴏᴜᴛ ᴘʀᴇᴍɪᴜᴍ ᴘʟᴀɴꜱ 💸", callback_data='upgrade', style=ButtonStyle.SUCCESS)]]))
         else:
-            m=await message.reply_sticker("CAACAgIAAxkBAAIBTGVjQbHuhOiboQsDm35brLGyLQ28AAJ-GgACglXYSXgCrotQHjibHgQ")
-            await message.reply_text(f"ʜᴇʏ {user},\n\nʏᴏᴜ ᴅᴏ ɴᴏᴛ ʜᴀᴠᴇ ᴀɴʏ ᴀᴄᴛɪᴠᴇ ᴘʀᴇᴍɪᴜᴍ ᴘʟᴀɴs, ɪꜰ ʏᴏᴜ ᴡᴀɴᴛ ᴛᴏ ᴛᴀᴋᴇ ᴘʀᴇᴍɪᴜᴍ ᴛʜᴇɴ ᴄʟɪᴄᴋ ᴏɴ ʙᴇʟᴏᴡ ʙᴜᴛᴛᴏɴ 👇",
-            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("💸 ᴄʜᴇᴄᴋᴏᴜᴛ ᴘʀᴇᴍɪᴜᴍ ᴘʟᴀɴꜱ 💸", callback_data='upgrade', style=ButtonStyle.SUCCESS)]]))			 
+            m = await message.reply_sticker("CAACAgIAAxkBAAIBTGVjQbHuhOiboQsDm35brLGyLQ28AAJ-GgACglXYSXgCrotQHjibHgQ")
+            await message.reply_text(
+                f"ʜᴇʏ {user},\n\nʏᴏᴜ ᴅᴏ ɴᴏᴛ ʜᴀᴠᴇ ᴀɴʏ ᴀᴄᴛɪᴠᴇ ᴘʀᴇᴍɪᴜᴍ ᴘʟᴀɴs, ɪꜰ ʏᴏᴜ ᴡᴀɴᴛ ᴛᴏ ᴛᴀᴋᴇ ᴘʀᴇᴍɪᴜᴍ ᴛʜᴇɴ ᴄʟɪᴄᴋ ᴏɴ ʙᴇʟᴏᴡ ʙᴜᴛᴛᴏɴ 👇",
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("💸 ᴄʜᴇᴄᴋᴏᴜᴛ ᴘʀᴇᴍɪᴜᴍ ᴘʟᴀɴꜱ 💸", callback_data='upgrade', style=ButtonStyle.SUCCESS)]])
+            )			 
             await asyncio.sleep(2)
             await m.delete()
 
