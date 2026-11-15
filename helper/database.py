@@ -177,49 +177,71 @@ class Database:
         return user_data or None
         
     async def get_user(self, user_id):
-        user_data = await self.premium.find_one({"id": user_id})
+        # Pehle premium collection check karega, agar wahan nahi mila toh main collection se expiry_time utha lega (Sync fix)
+        user_data = await self.premium.find_one({"id": int(user_id)})
+        if not user_data:
+            main_user = await.col.find_one({'_id': int(user_id)})
+            if main_user and main_user.get("expiry_time"):
+                return {"id": int(user_id), "expiry_time": main_user.get("expiry_time"), "has_free_trial": main_user.get("has_free_trial", False)}
         return user_data
 
-    async def add_premium(self, user_id, user_data, limit=None, type=None):    
+    async def add_premium(self, user_id, user_data, limit=None, type=None):
+        if isinstance(user_data, datetime.datetime):
+            # Agar sirf expiry_time pass hua ho
+            expiry = user_data
+            user_doc = {"id": int(user_id), "expiry_time": expiry, "has_free_trial": False}
+        elif isinstance(user_data, dict):
+            user_doc = user_data
+            expiry = user_doc.get("expiry_time")
+        else:
+            expiry = None
+            user_doc = {"id": int(user_id)}
+
         await self.premium.update_one(
-            {"id": user_id}, 
-            {"$set": user_data}, 
+            {"id": int(user_id)}, 
+            {"$set": user_doc}, 
             upsert=True
         )
         
-        if Config.UPLOAD_LIMIT_MODE and limit and type:
+        # Main collection mein bhi expiry_time sync kar dena taaki koi mismatch na ho
+        update_dict = {}
+        if expiry:
+            update_dict["expiry_time"] = expiry
+        if limit is not None:
+            update_dict["uploadlimit"] = limit
+        if type is not None:
+            update_dict["usertype"] = type
+            
+        if update_dict:
             await self.col.update_one(
-                {'_id': user_id}, 
-                {'_set': {
-                    'usertype': type,
-                    'uploadlimit': limit
-                }}
+                {'_id': int(user_id)}, 
+                {'$set': update_dict},
+                upsert=True
             )
     
     async def remove_premium(self, user_id, limit=Config.FREE_UPLOAD_LIMIT, type="Free"):
         await self.premium.update_one(
-            {"id": user_id}, 
+            {"id": int(user_id)}, 
             {"$set": {
                 "expiry_time": None,
                 "has_free_trial": False
             }}
         )
         
-        if Config.UPLOAD_LIMIT_MODE and limit and type:
-            await self.col.update_one(
-                {'_id': user_id}, 
-                {'_set': {
-                    'usertype': type,
-                    'uploadlimit': limit
-                }}
-            )
+        await self.col.update_one(
+            {'_id': int(user_id)}, 
+            {'$set': {
+                'expiry_time': None,
+                'usertype': type,
+                'uploadlimit': limit
+            }}
+        )
           
     async def has_premium_access(self, user_id):
         user_data = await self.get_user(user_id)
         if user_data:
             expiry_time = user_data.get("expiry_time")
             if expiry_time is None:
-                # User previously used the free trial, but it has ended.
                 return False
             elif isinstance(expiry_time, datetime.datetime) and datetime.datetime.now() <= expiry_time:
                 return True
@@ -238,13 +260,12 @@ class Database:
         return False
 
     async def premium_state(self, user_id) -> dict:
-        """One read for callers that need trial flag + access verdict."""
         user_data = await self.get_user(user_id)
         active = False
         if user_data:
             expiry_time = user_data.get("expiry_time")
             if expiry_time is None:
-                active = False  # free trial was used up
+                active = False
             elif isinstance(expiry_time, datetime.datetime) and datetime.datetime.now() <= expiry_time:
                 active = True
             else:
@@ -259,7 +280,7 @@ class Database:
         seconds = 720 * 60
         expiry_time = datetime.datetime.now() + datetime.timedelta(seconds=seconds)
         user_data = {
-            "id": user_id, 
+            "id": int(user_id), 
             "expiry_time": expiry_time, 
             "has_free_trial": True
         }
@@ -267,9 +288,9 @@ class Database:
         if Config.UPLOAD_LIMIT_MODE:
             limit_type = "Trial"
             upload_limit = 536870912000
-            await self.add_premium(user_id, user_data, upload_limit, limit_type)
+            await self.add_premium(int(user_id), user_data, upload_limit, limit_type)
         else:
-            await self.add_premium(user_id, user_data)
+            await self.add_premium(int(user_id), user_data)
                     
     async def remove_ban(self, id):
         ban_status = dict(
@@ -293,4 +314,4 @@ class Database:
         return banned_users
         
 digital_botz = Database(Config.DB_URL, Config.DB_NAME)
-    
+        
