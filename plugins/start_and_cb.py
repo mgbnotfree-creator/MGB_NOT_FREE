@@ -174,7 +174,7 @@ async def addthumbs(client, message):
     await digital_botz.set_thumbnail(message.from_user.id, file_id=message.photo.file_id)                
     await rkn.edit("✅️ <b><i>Tʜᴜᴍʙɴᴀɪʟ Sᴀᴠᴇᴅ</i></b>")
 
-# --- 100% FIXED: /myplan COMMAND (FILES COUNT & SMART PREMIUM CHECK) ---
+# --- 100% FIXED: /myplan COMMAND (SYNCED WITH ADMIN.PY & AUTO-EXPIRY) ---
 @Client.on_message(filters.private & filters.command("myplan"))
 async def myplan(client, message):
     if not client.premium:
@@ -184,18 +184,27 @@ async def myplan(client, message):
     
     premium = await digital_botz.premium_state(user_id)
     user_data = await digital_botz.get_user_data(user_id)
+    data = await digital_botz.get_user(user_id)
     
     user_plan = user_data.get('usertype', 'Free') if user_data else 'Free'
     db_limit = int(user_data.get('uploadlimit', 5)) if user_data else 5
     used = int(user_data.get('used_limit', 0)) if user_data else 0
     
+    # Dono jagah se expiry_time check karna
+    expiry_time = (data.get("expiry_time") if data else None) or (user_data.get("expiry_time") if user_data else None)
+    
+    # Check agar plan expire ho chuka hai
+    if expiry_time and isinstance(expiry_time, datetime.datetime):
+        if datetime.datetime.now() > expiry_time:
+            await digital_botz.col.update_one({"_id": user_id}, {"$set": {"expiry_time": None, "uploadlimit": 5, "usertype": "Free"}})
+            user_plan = "Free"
+            db_limit = 5
+            expiry_time = None
+    
     # Smart Premium Check
     is_premium = premium["has_premium_access"] or (str(user_plan).lower() not in ['free', 'none', '']) or (db_limit > 5)
     
     if is_premium:
-        data = await digital_botz.get_user(user_id)
-        expiry_str_in_ist = data.get("expiry_time") if data else None
-        
         max_limit = db_limit if db_limit > 5 else 50
         remain = max(0, max_limit - used)
         plan_name = user_plan if str(user_plan).lower() not in ['free', 'none', ''] else 'Pro'
@@ -208,9 +217,9 @@ async def myplan(client, message):
                 f"<b>ᴛᴏᴅᴀʏ ᴜsᴇᴅ :-</b> <code>{used} Files</code>\n"
                 f"<b>ʀᴇᴍᴀɪɴ :-</b> <code>{remain} Files</code>\n"
             )
-        if expiry_str_in_ist and isinstance(expiry_str_in_ist, datetime.datetime):
-            time_left_str = expiry_str_in_ist - datetime.datetime.now()
-            text += f"<b>ᴛɪᴍᴇ ʟᴇꜰᴛ :-</b> <code>{str(time_left_str).split('.')[0]}</code>\n<b>ᴇxᴘɪʀʏ ᴅᴀᴛᴇ :-</b> <code>{expiry_str_in_ist.strftime('%d-%m-%Y %I:%M:%S %p')}</code>"
+        if expiry_time and isinstance(expiry_time, datetime.datetime):
+            time_left_str = expiry_time - datetime.datetime.now()
+            text += f"<b>ᴛɪᴍᴇ ʟᴇꜰᴛ :-</b> <code>{str(time_left_str).split('.')[0]}</code>\n<b>ᴇxᴘɪʀʏ ᴅᴀᴛᴇ :-</b> <code>{expiry_time.strftime('%d-%m-%Y %I:%M:%S %p')}</code>"
         else:
             text += "<b>ᴇxᴘɪʀʏ ᴅᴀᴛᴇ :-</b> <code>Active Plan</code>"
             
@@ -383,3 +392,4 @@ async def cb_handler(client, query: CallbackQuery):
             except Exception:
                 pass
         await query.message.continue_propagation()
+       
