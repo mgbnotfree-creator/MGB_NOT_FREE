@@ -43,7 +43,6 @@ async def add_premium(client, message):
         if len(message.command) < 4:
             return await message.reply_text("<b>Usage :</b>\n<code>/givepro user_id Pro 1 month</code>\n<i>or</i>\n<code>/givepro user_id UltraPro 1 month</code>")
         
-        # 100% FIXED: Integer User ID and Case-Insensitive Plan Check
         user_id = int(message.command[1].strip())
         plan_type_input = message.command[2].lower().strip()
         
@@ -72,7 +71,7 @@ async def add_premium(client, message):
         
         expiry_time = datetime.datetime.now() + datetime.timedelta(seconds=seconds)
         
-        # 100% FIXED: Yahan error-free MongoDB update logic lagaya gaya hai
+        # 1. Update Main User Collection (Limit & Plan Type)
         await digital_botz.col.update_one(
             {"_id": user_id},
             {"$set": {
@@ -82,6 +81,19 @@ async def add_premium(client, message):
             }},
             upsert=True
         )
+        
+        # 2. Update Premium Access Collection (So has_premium_access becomes True)
+        try:
+            if hasattr(digital_botz, "add_premium"):
+                await digital_botz.add_premium(user_id, expiry_time)
+            elif hasattr(digital_botz, "premium"):
+                await digital_botz.premium.update_one(
+                    {"id": user_id},
+                    {"$set": {"expiry_time": expiry_time}},
+                    upsert=True
+                )
+        except Exception:
+            pass
         
         expiry_str_in_ist = expiry_time.astimezone(ZoneInfo("Asia/Kolkata")).strftime("%d-%m-%Y\n⏱️ ᴇxᴘɪʀʏ ᴛɪᴍᴇ : %I:%M:%S %p")
         
@@ -124,7 +136,6 @@ async def remove_premium(bot, message):
         except Exception:
             mention = f"User {user_id}"
         
-        # FIXED: remove premium par free limit (5) set ki gai hai taaki user block na ho
         await digital_botz.col.update_one(
             {"_id": user_id},
             {"$set": {
@@ -134,9 +145,17 @@ async def remove_premium(bot, message):
             }}
         )
         
+        try:
+            if hasattr(digital_botz, "remove_premium"):
+                await digital_botz.remove_premium(user_id)
+            elif hasattr(digital_botz, "premium"):
+                await digital_botz.premium.delete_one({"id": user_id})
+        except Exception:
+            pass
+        
         await message.reply_text(f"ʜᴇʏ {mention}, ᴘʀᴇᴍɪᴜᴍ ᴘʟᴀɴ sᴜᴄᴄᴇssғᴜʟʟʏ ʀᴇᴍᴏᴠᴇᴅ.")
         try:
-            await bot.send_message(chat_id=user_id, text=f"<b>ʜᴇʏ {mention},\n\n✨ ʏᴏᴜʀ ᴀᴄᴄᴏᴜɴᴛ ʜᴀs ʙᴇᴇɴ ʀᴇᴍᴏᴠᴇᴅ ᴛᴏ ᴏᴜʀ ᴘʀᴇᴍɪᴜᴍ ᴘʟᴀɴ\n\nᴄʜᴇᴄᴋ ʏᴏᴜʀ ᴘʟᴀɴ ʜᴇʀᴇ /myplan</b>")
+            await bot.send_message(chat_id=user_id, text=f"<b>ʜᴇʏ {mention},\n\n✨ ʏᴏᴜʀ ᴀᴄᴄᴏᴜɴᴛ ʜᴀs ʙᴇᴇɴ ʀᴇᴍᴏᴠᴇᴅ ꜰʀᴏᴍ ᴏᴜʀ ᴘʀᴇᴍɪᴜᴍ ᴘʟᴀɴ\n\nᴄʜᴇᴄᴋ ʏᴏᴜʀ ᴘʟᴀɴ ʜᴇʀᴇ /myplan</b>")
         except Exception:
             pass
     else:
